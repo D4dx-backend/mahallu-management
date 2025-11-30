@@ -1,0 +1,189 @@
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useNavigate } from 'react-router-dom';
+import { FiSave, FiX } from 'react-icons/fi';
+import Breadcrumb from '@/components/layout/Breadcrumb';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
+import { ROUTES } from '@/constants/routes';
+import { committeeService } from '@/services/committeeService';
+import { memberService } from '@/services/memberService';
+import { Member } from '@/types';
+
+const committeeSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  members: z.array(z.string()).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
+});
+
+type CommitteeFormData = z.infer<typeof committeeSchema>;
+
+export default function CreateCommittee() {
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    watch,
+  } = useForm<CommitteeFormData>({
+    resolver: zodResolver(committeeSchema),
+    defaultValues: {
+      status: 'active',
+      members: [],
+    },
+  });
+
+  const selectedMembers = watch('members') || [];
+
+  useEffect(() => {
+    fetchMembers();
+  }, []);
+
+  const fetchMembers = async () => {
+    try {
+      setLoadingMembers(true);
+      const result = await memberService.getAll();
+      setMembers(result.data || []);
+    } catch (err) {
+      console.error('Error fetching members:', err);
+      setMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const toggleMember = (memberId: string) => {
+    const current = selectedMembers || [];
+    if (current.includes(memberId)) {
+      setValue('members', current.filter((id) => id !== memberId));
+    } else {
+      setValue('members', [...current, memberId]);
+    }
+  };
+
+  const onSubmit = async (data: CommitteeFormData) => {
+    try {
+      setError(null);
+      await committeeService.create({
+        name: data.name,
+        description: data.description,
+        members: data.members || [],
+        status: data.status || 'active',
+      });
+      navigate('/committees');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to create committee. Please try again.');
+      console.error('Error creating committee:', err);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Create Committee</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Add a new committee</p>
+        </div>
+        <Breadcrumb
+          items={[
+            { label: 'Dashboard', path: '/dashboard' },
+            { label: 'Committees', path: '/committees' },
+            { label: 'Create' },
+          ]}
+        />
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Card className="space-y-6">
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm dark:bg-red-900 dark:border-red-700 dark:text-red-200">
+              {error}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Name"
+              {...register('name')}
+              error={errors.name?.message}
+              required
+              placeholder="Committee Name"
+              className="md:col-span-2"
+            />
+            <Input
+              label="Description"
+              {...register('description')}
+              placeholder="Description"
+              className="md:col-span-2"
+            />
+            <Select
+              label="Status"
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+              ]}
+              {...register('status')}
+              className="md:col-span-2"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Members ({selectedMembers.length} selected)
+            </label>
+            {loadingMembers ? (
+              <p className="text-sm text-gray-500">Loading members...</p>
+            ) : (
+              <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 max-h-64 overflow-y-auto">
+                {members.length === 0 ? (
+                  <p className="text-sm text-gray-500">No members available</p>
+                ) : (
+                  <div className="space-y-2">
+                    {members.map((member) => (
+                      <label
+                        key={member.id}
+                        className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedMembers.includes(member.id)}
+                          onChange={() => toggleMember(member.id)}
+                          className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {member.name} ({member.familyName})
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button type="button" variant="outline" onClick={() => navigate('/committees')}>
+              <FiX className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={isSubmitting}>
+              <FiSave className="h-4 w-4 mr-2" />
+              Create Committee
+            </Button>
+          </div>
+        </Card>
+      </form>
+    </div>
+  );
+}
+

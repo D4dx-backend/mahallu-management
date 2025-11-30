@@ -1,0 +1,116 @@
+import { useState, useEffect } from 'react';
+import Breadcrumb from '@/components/layout/Breadcrumb';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import { reportService, AreaReport } from '@/services/reportService';
+
+export default function AreaReportPage() {
+  const [report, setReport] = useState<AreaReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchReport();
+  }, []);
+
+  const fetchReport = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await reportService.getAreaReport();
+      setReport(data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch area report');
+      console.error('Error fetching report:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error || !report) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 dark:text-red-400">{error || 'Report not available'}</p>
+        <Button onClick={fetchReport} className="mt-4" variant="outline">
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Breadcrumb items={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Area Report' }]} />
+
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Area Report</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Area-wise family and member statistics</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Total Families</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{report.totalFamilies}</div>
+        </Card>
+        <Card>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Total Members</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{report.totalMembers}</div>
+        </Card>
+        <Card>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Male</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{report.maleCount}</div>
+        </Card>
+        <Card>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Female</div>
+          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{report.femaleCount}</div>
+        </Card>
+      </div>
+
+      <Card>
+        <h2 className="text-lg font-semibold mb-4">Family Details</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  House Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Area
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Members
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+              {report.families.map((family) => (
+                <tr key={family.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {family.houseName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {family.area || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                    {family.memberCount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+

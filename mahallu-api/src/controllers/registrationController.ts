@@ -1,0 +1,263 @@
+import { Request, Response } from 'express';
+import { NikahRegistration, DeathRegistration, NOC } from '../models/Registration';
+import { AuthRequest } from '../middleware/authMiddleware';
+import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
+
+// Nikah Registration
+export const getAllNikahRegistrations = async (req: AuthRequest, res: Response) => {
+  try {
+    const { status, search, tenantId } = req.query;
+    const { page, limit, skip } = getPaginationParams(req);
+    const query: any = {};
+
+    if (!req.isSuperAdmin && req.tenantId) {
+      query.tenantId = req.tenantId;
+    } else if (tenantId && req.isSuperAdmin) {
+      query.tenantId = tenantId;
+    }
+
+    if (status) query.status = status;
+    if (search) {
+      query.$or = [
+        { groomName: { $regex: search, $options: 'i' } },
+        { brideName: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const [registrations, total] = await Promise.all([
+      NikahRegistration.find(query)
+        .populate('groomId', 'name')
+        .populate('brideId', 'name')
+        .sort({ nikahDate: -1 })
+        .skip(skip)
+        .limit(limit),
+      NikahRegistration.countDocuments(query),
+    ]);
+
+    res.json(createPaginationResponse(registrations, total, page, limit));
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getNikahRegistrationById = async (req: AuthRequest, res: Response) => {
+  try {
+    const registration = await NikahRegistration.findById(req.params.id)
+      .populate('groomId', 'name')
+      .populate('brideId', 'name');
+    
+    if (!registration) {
+      return res.status(404).json({ success: false, message: 'Nikah registration not found' });
+    }
+
+    // Check tenant access
+    if (!req.isSuperAdmin && registration.tenantId.toString() !== req.tenantId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    res.json({ success: true, data: registration });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createNikahRegistration = async (req: AuthRequest, res: Response) => {
+  try {
+    const registrationData = {
+      ...req.body,
+      tenantId: req.tenantId || req.body.tenantId,
+    };
+
+    if (!registrationData.tenantId && !req.isSuperAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID is required',
+      });
+    }
+
+    const registration = new NikahRegistration(registrationData);
+    await registration.save();
+    res.status(201).json({ success: true, data: registration });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Death Registration
+export const getAllDeathRegistrations = async (req: AuthRequest, res: Response) => {
+  try {
+    const { status, search, tenantId } = req.query;
+    const { page, limit, skip } = getPaginationParams(req);
+    const query: any = {};
+
+    if (!req.isSuperAdmin && req.tenantId) {
+      query.tenantId = req.tenantId;
+    } else if (tenantId && req.isSuperAdmin) {
+      query.tenantId = tenantId;
+    }
+
+    if (status) query.status = status;
+    if (search) {
+      query.deceasedName = { $regex: search, $options: 'i' };
+    }
+
+    const [registrations, total] = await Promise.all([
+      DeathRegistration.find(query)
+        .populate('deceasedId', 'name')
+        .populate('familyId', 'houseName')
+        .sort({ deathDate: -1 })
+        .skip(skip)
+        .limit(limit),
+      DeathRegistration.countDocuments(query),
+    ]);
+
+    res.json(createPaginationResponse(registrations, total, page, limit));
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getDeathRegistrationById = async (req: AuthRequest, res: Response) => {
+  try {
+    const registration = await DeathRegistration.findById(req.params.id)
+      .populate('deceasedId', 'name')
+      .populate('familyId', 'houseName');
+    
+    if (!registration) {
+      return res.status(404).json({ success: false, message: 'Death registration not found' });
+    }
+
+    // Check tenant access
+    if (!req.isSuperAdmin && registration.tenantId.toString() !== req.tenantId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    res.json({ success: true, data: registration });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createDeathRegistration = async (req: AuthRequest, res: Response) => {
+  try {
+    const registrationData = {
+      ...req.body,
+      tenantId: req.tenantId || req.body.tenantId,
+    };
+
+    if (!registrationData.tenantId && !req.isSuperAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID is required',
+      });
+    }
+
+    const registration = new DeathRegistration(registrationData);
+    await registration.save();
+    res.status(201).json({ success: true, data: registration });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// NOC
+export const getAllNOCs = async (req: AuthRequest, res: Response) => {
+  try {
+    const { type, status, search, tenantId } = req.query;
+    const { page, limit, skip } = getPaginationParams(req);
+    const query: any = {};
+
+    if (!req.isSuperAdmin && req.tenantId) {
+      query.tenantId = req.tenantId;
+    } else if (tenantId && req.isSuperAdmin) {
+      query.tenantId = tenantId;
+    }
+
+    if (type) query.type = type;
+    if (status) query.status = status;
+    if (search) {
+      query.applicantName = { $regex: search, $options: 'i' };
+    }
+
+    const [nocs, total] = await Promise.all([
+      NOC.find(query)
+        .populate('applicantId', 'name')
+        .populate('nikahRegistrationId')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      NOC.countDocuments(query),
+    ]);
+
+    res.json(createPaginationResponse(nocs, total, page, limit));
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getNOCById = async (req: AuthRequest, res: Response) => {
+  try {
+    const noc = await NOC.findById(req.params.id)
+      .populate('applicantId', 'name')
+      .populate('nikahRegistrationId');
+    
+    if (!noc) {
+      return res.status(404).json({ success: false, message: 'NOC not found' });
+    }
+
+    // Check tenant access
+    if (!req.isSuperAdmin && noc.tenantId.toString() !== req.tenantId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    res.json({ success: true, data: noc });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createNOC = async (req: AuthRequest, res: Response) => {
+  try {
+    const nocData = {
+      ...req.body,
+      tenantId: req.tenantId || req.body.tenantId,
+    };
+
+    if (!nocData.tenantId && !req.isSuperAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID is required',
+      });
+    }
+
+    const noc = new NOC(nocData);
+    await noc.save();
+    res.status(201).json({ success: true, data: noc });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateNOC = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, issuedDate, expiryDate, remarks } = req.body;
+    
+    const noc = await NOC.findByIdAndUpdate(
+      id,
+      { status, issuedDate, expiryDate, remarks },
+      { new: true, runValidators: true }
+    )
+      .populate('applicantId', 'name')
+      .populate('nikahRegistrationId');
+
+    if (!noc) {
+      return res.status(404).json({ success: false, message: 'NOC not found' });
+    }
+
+    res.json({ success: true, data: noc });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

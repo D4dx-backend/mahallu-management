@@ -1,0 +1,189 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiEye, FiEdit2, FiCheck, FiX, FiHome, FiUsers } from 'react-icons/fi';
+import Breadcrumb from '@/components/layout/Breadcrumb';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import StatCard from '@/components/ui/StatCard';
+import Table from '@/components/ui/Table';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import TableToolbar from '@/components/ui/TableToolbar';
+import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
+import { TableColumn } from '@/types';
+import { Family } from '@/types';
+import { ROUTES } from '@/constants/routes';
+import { familyService } from '@/services/familyService';
+import { useDebounce } from '@/hooks/useDebounce';
+import { formatDate } from '@/utils/format';
+import { exportToCSV, exportToJSON, exportToPDF } from '@/utils/exportUtils';
+
+export default function UnapprovedFamiliesList() {
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const [families, setFamilies] = useState<Family[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  useEffect(() => {
+    fetchFamilies();
+  }, [debouncedSearch]);
+
+  const fetchFamilies = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params: any = { status: 'unapproved' };
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+      const result = await familyService.getAll(params);
+      setFamilies(result.data || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to fetch unapproved families');
+      console.error('Error fetching families:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExport = async (type: 'csv' | 'json' | 'pdf') => {
+    try {
+      setIsExporting(true);
+      const params: any = { status: 'unapproved', limit: 10000 };
+      if (debouncedSearch) params.search = debouncedSearch;
+      const result = await familyService.getAll(params);
+      const dataToExport = result.data || [];
+      if (dataToExport.length === 0) { alert('No data to export'); return; }
+      const filename = 'unapproved-families';
+      const title = 'Unapproved Families';
+      switch (type) {
+        case 'csv': exportToCSV(columns, dataToExport, filename); break;
+        case 'json': exportToJSON(columns, dataToExport, filename); break;
+        case 'pdf': exportToPDF(columns, dataToExport, filename, title); break;
+      }
+    } catch (error: any) {
+      console.error('Export error:', error);
+      alert(error?.message || 'Failed to export data');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    try {
+      await familyService.update(id, { status: 'approved' });
+      await fetchFamilies();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to approve family');
+    }
+  };
+
+  const columns: TableColumn<Family>[] = [
+    { key: 'id', label: 'No.', render: (_, __, index) => index + 1 },
+    { key: 'mahallId', label: 'Mahall ID', render: (id) => id || '-' },
+    { key: 'houseName', label: 'House Name', sortable: true },
+    {
+      key: 'familyHead',
+      label: 'Family Head',
+      render: (head) => head || '-',
+    },
+    {
+      key: 'members',
+      label: 'Members',
+      render: (members) => members?.length || 0,
+    },
+    { key: 'area', label: 'Area' },
+    {
+      key: 'createdAt',
+      label: 'Created',
+      render: (date) => formatDate(date),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_, row) => {
+        const actionItems: ActionMenuItem[] = [
+          {
+            label: 'View',
+            icon: <FiEye />,
+            onClick: () => navigate(ROUTES.FAMILIES.DETAIL(row.id)),
+          },
+          {
+            label: 'Edit',
+            icon: <FiEdit2 />,
+            onClick: () => navigate(ROUTES.FAMILIES.EDIT(row.id)),
+          },
+          {
+            label: 'Approve',
+            icon: <FiCheck />,
+            onClick: () => handleApprove(row.id),
+            variant: 'default',
+          },
+        ];
+        return <ActionsMenu items={actionItems} />;
+      },
+    },
+  ];
+
+  const stats = [
+    { title: 'Unapproved Families', value: families.length, icon: <FiHome className="h-5 w-5" /> },
+    {
+      title: 'Total Members',
+      value: families.reduce((sum, f) => sum + (f.members?.length || 0), 0),
+      icon: <FiUsers className="h-5 w-5" />,
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Unapproved Families</h1>
+            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Review and approve pending family registrations</p>
+          </div>
+          <Breadcrumb items={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Unapproved Families' }]} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {stats.map((stat, index) => (
+            <StatCard key={index} {...stat} />
+          ))}
+        </div>
+      </div>
+
+      <Card>
+        <TableToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onFilterClick={() => setIsFilterVisible(!isFilterVisible)}
+          isFilterVisible={isFilterVisible}
+          hasFilters={false}
+          onRefresh={fetchFamilies}
+          onExport={handleExport}
+          isExporting={isExporting}
+        />
+
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <LoadingSpinner />
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-red-600 dark:text-red-400">{error}</p>
+            <Button onClick={fetchFamilies} className="mt-4" variant="outline">
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <Table columns={columns} data={families} emptyMessage="No unapproved families found" showExport={false} />
+        )}
+      </Card>
+    </div>
+  );
+}
+

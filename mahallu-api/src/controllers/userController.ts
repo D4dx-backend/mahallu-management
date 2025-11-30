@@ -1,0 +1,294 @@
+import { Request, Response } from 'express';
+import User from '../models/User';
+import bcrypt from 'bcryptjs';
+import { AuthRequest } from '../middleware/authMiddleware';
+import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
+
+export const getAllUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    const { role, status, search, tenantId } = req.query;
+    const { page, limit, skip } = getPaginationParams(req);
+    const query: any = {};
+
+    // Super admin can see all users, others only see their tenant users
+    if (!req.isSuperAdmin && req.tenantId) {
+      query.tenantId = req.tenantId;
+    } else if (tenantId && req.isSuperAdmin) {
+      query.tenantId = tenantId;
+    }
+
+    if (role) query.role = role;
+    // Filter by status - if not specified, show active users only
+    if (status) {
+      query.status = status;
+    } else {
+      query.status = 'active'; // Default to active users only
+    }
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('-password')
+        .populate('tenantId', 'name code')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(query),
+    ]);
+
+    res.json(createPaginationResponse(users, total, page, limit));
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    res.json({ success: true, data: user });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, phone, email, role, permissions, password, tenantId, memberId } = req.body;
+
+    // Determine tenant ID
+    let finalTenantId = tenantId;
+    if (!req.isSuperAdmin) {
+      finalTenantId = req.tenantId;
+    }
+    if (role === 'super_admin') {
+      finalTenantId = null; // Super admin has no tenant
+    }
+
+    // For member users, validate memberId and ensure phone matches
+    if (role === 'member') {
+      if (!memberId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Member ID is required for member users',
+        });
+      }
+
+      const Member = (await import('../models/Member')).default;
+      const member = await Member.findById(memberId);
+      
+      if (!member) {
+        return res.status(404).json({
+          success: false,
+          message: 'Member not found',
+        });
+      }
+
+      // Ensure member belongs to the same tenant
+      if (member.tenantId.toString() !== finalTenantId?.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Member does not belong to this tenant',
+        });
+      }
+
+      // Use member's phone if phone not provided or ensure it matches
+      const finalPhone = phone || member.phone;
+      if (!finalPhone) {
+        return res.status(400).json({
+          success: false,
+          message: 'Member phone number is required',
+        });
+      }
+
+      // Check if member user already exists
+      const existingMemberUser = await User.findOne({ memberId, role: 'member' });
+      if (existingMemberUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Member user account already exists for this member',
+        });
+      }
+
+      // Check if phone is already used by another user
+      const existingUser = await User.findOne({ phone: finalPhone, tenantId: finalTenantId });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'User with this phone number already exists for this tenant',
+        });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password || '123456', 10);
+
+      const user = new User({
+        name: name || member.name,
+        phone: finalPhone,
+        email,
+        role: 'member',
+        tenantId: finalTenantId,
+        memberId: member._id,
+        isSuperAdmin: false,
+        permissions: permissions || {
+          view: true,
+          add: false,
+          edit: false,
+          delete: false,
+        },
+        password: hashedPassword,
+      });
+
+      await user.save();
+      const userResponse = await User.findById(user._id)
+        .select('-password')
+        .populate('tenantId', 'name code')
+        .populate('memberId', 'name phone familyName');
+      return res.status(201).json({ success: true, data: userResponse });
+    }
+
+    // For non-member users, use existing logic
+    // Check if user already exists (phone + tenantId combination)
+    const existingUser = await User.findOne({ phone, tenantId: finalTenantId });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this phone number already exists for this tenant',
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password || '123456', 10);
+
+    const user = new User({
+      name,
+      phone,
+      email,
+      role: role || 'mahall',
+      tenantId: finalTenantId,
+      isSuperAdmin: role === 'super_admin',
+      permissions: permissions || {
+        view: false,
+        add: false,
+        edit: false,
+        delete: false,
+      },
+      password: hashedPassword,
+    });
+
+    await user.save();
+    const userResponse = await User.findById(user._id).select('-password').populate('tenantId', 'name code');
+    res.status(201).json({ success: true, data: userResponse });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const { name, phone, email, status, permissions } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { name, phone, email, status, permissions },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({ success: true, data: user });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateUserStatus = async (req: Request, res: Response) => {
+  try {
+    const { status } = req.body;
+    
+    if (!status || !['active', 'inactive'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid status is required (active or inactive)',
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Update user status
+    user.status = status as 'active' | 'inactive';
+    await user.save();
+
+    // If it's a member user, also update the linked member status
+    if (user.role === 'member' && user.memberId) {
+      const Member = (await import('../models/Member')).default;
+      const member = await Member.findById(user.memberId);
+      if (member) {
+        if (status === 'inactive') {
+          member.status = 'inactive';
+        } else if (status === 'active' && member.status === 'inactive') {
+          member.status = 'active';
+        }
+        await member.save();
+      }
+    }
+
+    const updatedUser = await User.findById(user._id)
+      .select('-password')
+      .populate('tenantId', 'name code')
+      .populate('memberId', 'name phone familyName');
+    
+    res.json({ 
+      success: true, 
+      message: `User status updated to ${status} successfully`,
+      data: updatedUser,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Update status to inactive instead of deleting
+    user.status = 'inactive';
+    await user.save();
+
+    // If it's a member user, also update the linked member status to deleted
+    if (user.role === 'member' && user.memberId) {
+      const Member = (await import('../models/Member')).default;
+      const member = await Member.findById(user.memberId);
+      if (member) {
+        member.status = 'deleted';
+        await member.save();
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: user.role === 'member' 
+        ? 'Member user and linked member record status updated successfully' 
+        : 'User status updated to inactive successfully' 
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
