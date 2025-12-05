@@ -1,8 +1,9 @@
 [build]
+  base = "mahallu-cms"
   command = "npm run build"
   publish = "dist"
-  base = "."
 
+# SPA Redirects (React Router)
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -10,9 +11,3 @@
 
 [build.environment]
   NODE_VERSION = "20"
-
-# Opt out of Google's FLoC tracking
-[[headers]]
-  for = "/*"
-  [headers.values]
-    Permissions-Policy = "interest-cohort=()"
