@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,11 +10,15 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { ROUTES } from '@/constants/routes';
 import { userService } from '@/services/userService';
+import { tenantService } from '@/services/tenantService';
+import { useAuthStore } from '@/store/authStore';
+import { Tenant } from '@/types/tenant';
 
 const userSchema = z.object({
-  name: z.string().min(1, 'Full Name is required'),
-  phone: z.string().min(10, 'Phone Number is required'),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must not exceed 100 characters'),
+  phone: z.string().regex(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  tenantId: z.string().optional(),
   permissions: z.object({
     view: z.boolean().default(false),
     add: z.boolean().default(false),
@@ -28,6 +32,8 @@ type UserFormData = z.infer<typeof userSchema>;
 export default function CreateMahallUser() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const { isSuperAdmin, currentTenantId } = useAuthStore();
   const {
     register,
     handleSubmit,
@@ -36,6 +42,7 @@ export default function CreateMahallUser() {
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
+      tenantId: currentTenantId || '',
       permissions: {
         view: false,
         add: false,
@@ -47,18 +54,48 @@ export default function CreateMahallUser() {
 
   const permissions = watch('permissions');
 
+  useEffect(() => {
+    const loadTenants = async () => {
+      if (isSuperAdmin) {
+        try {
+          const result = await tenantService.getAll({ status: 'active' });
+          setTenants(result.data);
+        } catch (err) {
+          console.error('Error loading tenants:', err);
+        }
+      }
+    };
+    loadTenants();
+  }, [isSuperAdmin]);
+
   const onSubmit = async (data: UserFormData) => {
     try {
       setError(null);
+      
+      // Validate tenantId for super admin
+      if (isSuperAdmin && !data.tenantId) {
+        setError('Please select a tenant');
+        return;
+      }
+      
       await userService.create({
         ...data,
         role: 'mahall',
         password: '123456', // Default password
+        tenantId: isSuperAdmin ? data.tenantId : undefined,
       });
       navigate(ROUTES.USERS.MAHALL);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create user. Please try again.');
       console.error('Error creating user:', err);
+      console.error('Error response:', err.response?.data);
+      
+      // Handle validation errors
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorMessages = err.response.data.errors.map((e: any) => e.msg).join(', ');
+        setError(`Validation failed: ${errorMessages}`);
+      } else {
+        setError(err.response?.data?.message || 'Failed to create user. Please try again.');
+      }
     }
   };
 
@@ -95,6 +132,27 @@ export default function CreateMahallUser() {
               Basic Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {isSuperAdmin && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tenant <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    {...register('tenantId')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                  >
+                    <option value="">Select Tenant</option>
+                    {tenants.map((tenant) => (
+                      <option key={tenant.id} value={tenant.id}>
+                        {tenant.name} ({tenant.code})
+                      </option>
+                    ))}
+                  </select>
+                  {errors.tenantId && (
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.tenantId.message}</p>
+                  )}
+                </div>
+              )}
               <Input
                 label="Full Name"
                 {...register('name')}
@@ -108,7 +166,10 @@ export default function CreateMahallUser() {
                 {...register('phone')}
                 error={errors.phone?.message}
                 required
-                placeholder="Phone Number"
+                placeholder="9876543210"
+                pattern="[0-9]{10}"
+                maxLength={10}
+                title="Phone number must be exactly 10 digits"
               />
               <Input
                 label="Email"

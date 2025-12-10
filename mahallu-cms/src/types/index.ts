@@ -5,8 +5,9 @@ export interface User {
   name: string;
   phone: string;
   email?: string;
-  role: 'super_admin' | 'mahall' | 'survey' | 'institute';
+  role: 'super_admin' | 'mahall' | 'survey' | 'institute' | 'member';
   tenantId?: string;
+  memberId?: string;
   status: 'active' | 'inactive';
   joiningDate: string;
   lastLogin?: string;
@@ -16,6 +17,12 @@ export interface User {
     id: string;
     name: string;
     code: string;
+  };
+  member?: {
+    id: string;
+    name: string;
+    phone: string;
+    familyName: string;
   };
 }
 
@@ -116,7 +123,7 @@ export interface TableColumn<T = any> {
   key: string;
   label: string;
   sortable?: boolean;
-  render?: (value: any, row: T) => React.ReactNode;
+  render?: (value: any, row: T, index: number) => React.ReactNode;
 }
 
 export interface Pagination {
