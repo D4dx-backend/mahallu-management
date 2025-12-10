@@ -64,17 +64,42 @@ export const createUser = async (req: AuthRequest, res: Response) => {
   try {
     const { name, phone, email, role, permissions, password, tenantId, memberId } = req.body;
 
+    // Determine the final role (default to 'mahall' if not provided)
+    const finalRole = role || 'mahall';
+
     // Determine tenant ID
     let finalTenantId = tenantId;
-    if (!req.isSuperAdmin) {
+    
+    // Super admin creating a user
+    if (req.isSuperAdmin) {
+      // If creating a super_admin user, no tenant needed
+      if (finalRole === 'super_admin') {
+        finalTenantId = null;
+      } else {
+        // For other roles, super admin must provide tenantId
+        if (!tenantId) {
+          return res.status(400).json({
+            success: false,
+            message: 'Tenant ID is required when creating non-super-admin users',
+          });
+        }
+        finalTenantId = tenantId;
+      }
+    } else {
+      // Regular users can only create users in their own tenant
       finalTenantId = req.tenantId;
-    }
-    if (role === 'super_admin') {
-      finalTenantId = null; // Super admin has no tenant
+      
+      // Regular users cannot create super_admin users
+      if (finalRole === 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Only super admin can create super admin users',
+        });
+      }
     }
 
     // For member users, validate memberId and ensure phone matches
-    if (role === 'member') {
+    if (finalRole === 'member') {
       if (!memberId) {
         return res.status(400).json({
           success: false,
@@ -172,9 +197,9 @@ export const createUser = async (req: AuthRequest, res: Response) => {
       name,
       phone,
       email,
-      role: role || 'mahall',
+      role: finalRole,
       tenantId: finalTenantId,
-      isSuperAdmin: role === 'super_admin',
+      isSuperAdmin: finalRole === 'super_admin',
       permissions: permissions || {
         view: false,
         add: false,

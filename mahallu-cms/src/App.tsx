@@ -79,6 +79,7 @@ import InstituteUsersList from './features/users/pages/InstituteUsersList';
 import CreateInstituteUser from './features/users/pages/CreateInstituteUser';
 import EditInstituteUser from './features/users/pages/EditInstituteUser';
 import AllUsersList from './features/users/pages/AllUsersList';
+import SelectUserType from './features/users/pages/SelectUserType';
 import UnapprovedFamiliesList from './features/families/pages/UnapprovedFamiliesList';
 import InstituteDetail from './features/institutes/pages/InstituteDetail';
 import NotificationsList from './features/notifications/pages/NotificationsList';
@@ -947,6 +948,16 @@ function App() {
             <ProtectedRoute superAdminOnly>
               <MainLayout>
                 <AllUsersList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users/create"
+          element={
+            <ProtectedRoute superAdminOnly>
+              <MainLayout>
+                <SelectUserType />
               </MainLayout>
             </ProtectedRoute>
           }

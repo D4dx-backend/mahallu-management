@@ -14,18 +14,27 @@ export const createUserValidation = [
     .matches(/^[0-9]{10}$/)
     .withMessage('Phone number must be exactly 10 digits'),
   body('email')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isEmail()
     .withMessage('Invalid email address')
     .normalizeEmail(),
   body('role')
-    .isIn(['super_admin', 'mahall', 'survey', 'institute'])
-    .withMessage('Invalid role'),
+    .optional()
+    .isIn(['super_admin', 'mahall', 'survey', 'institute', 'member'])
+    .withMessage('Invalid role. Must be one of: super_admin, mahall, survey, institute, member'),
   body('password')
     .optional()
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters'),
+  body('tenantId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid tenant ID'),
+  body('memberId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid member ID'),
   body('permissions.view').optional().isBoolean(),
   body('permissions.add').optional().isBoolean(),
   body('permissions.edit').optional().isBoolean(),
