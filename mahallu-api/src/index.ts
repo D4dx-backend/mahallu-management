@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import * as swaggerUi from 'swagger-ui-express';
@@ -24,8 +24,29 @@ import notificationRoutes from './routes/notificationRoutes';
 import masterAccountRoutes from './routes/masterAccountRoutes';
 import tenantRoutes from './routes/tenantRoutes';
 import memberUserRoutes from './routes/memberUserRoutes';
+import path from 'path';
 
-dotenv.config();
+// Load environment variables from the correct path
+// When running with ts-node, __dirname is src/, so go up one level
+// When running compiled code, __dirname is dist/, so go up two levels
+const envPath = path.resolve(__dirname, '../.env');
+dotenv.config({ path: envPath });
+
+// Verify environment variables are loaded
+const requiredEnv = ['MONGODB_URI', 'JWT_SECRET', 'NODE_ENV'];
+const missingEnv = requiredEnv.filter((key) => !process.env[key]);
+
+if (missingEnv.length > 0) {
+  console.error('❌ ERROR: Required environment variables are missing:', missingEnv.join(', '));
+  console.error('Checked path:', envPath);
+  console.error('Current __dirname:', __dirname);
+  process.exit(1);
+}
+
+// Log environment presence (without secrets)
+console.info('🔍 Environment check:');
+console.info('NODE_ENV:', process.env.NODE_ENV);
+console.info('MONGODB_URI exists:', !!process.env.MONGODB_URI);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -75,7 +96,7 @@ app.use(activityLogger);
  *               status: ok
  *               message: Mahallu API is running
  */
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'Mahallu API is running' });
 });
 

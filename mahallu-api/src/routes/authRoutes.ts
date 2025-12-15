@@ -1,6 +1,7 @@
 import express from 'express';
 import { login, getCurrentUser, changePassword, sendOTP, verifyOTP } from '../controllers/authController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { verifyOtpRateLimiter } from '../middleware/rateLimit';
 import { validationHandler } from '../middleware/validationHandler';
 import {
   loginValidation,
@@ -162,7 +163,7 @@ router.post('/send-otp', sendOTPValidation, validationHandler, sendOTP);
  *       429:
  *         description: Too many failed attempts
  */
-router.post('/verify-otp', verifyOTPValidation, validationHandler, verifyOTP);
+router.post('/verify-otp', verifyOTPValidation, validationHandler, verifyOtpRateLimiter, verifyOTP);
 
 /**
  * @swagger

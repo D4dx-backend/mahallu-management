@@ -19,8 +19,8 @@ export const sendOTPValidation = [
     .trim()
     .notEmpty()
     .withMessage('Phone number is required')
-    .matches(/^[0-9]{10}$/)
-    .withMessage('Phone number must be exactly 10 digits'),
+    .matches(/^(\+?91)?[0-9]{10}$/)
+    .withMessage('Phone number must be 10 digits with optional +91 prefix'),
 ];
 
 export const verifyOTPValidation = [
@@ -28,8 +28,8 @@ export const verifyOTPValidation = [
     .trim()
     .notEmpty()
     .withMessage('Phone number is required')
-    .matches(/^[0-9]{10}$/)
-    .withMessage('Phone number must be exactly 10 digits'),
+    .matches(/^(\+?91)?[0-9]{10}$/)
+    .withMessage('Phone number must be 10 digits with optional +91 prefix'),
   body('otp')
     .trim()
     .notEmpty()
