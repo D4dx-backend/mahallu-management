@@ -4,7 +4,7 @@
   "description": "Mahallu Management System API",
   "main": "dist/index.js",
   "scripts": {
-    "start": "nodemon index.ts",
+    "start": "node index.ts",
     "build": "tsc --outDir dist",
     "serve": "node dist/index.js"
   },
