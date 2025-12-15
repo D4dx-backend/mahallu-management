@@ -4,13 +4,9 @@
   "description": "Mahallu Management System API",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "create-admin": "ts-node src/scripts/createSuperAdmin.ts",
-    "insert-sample-users": "ts-node src/scripts/insertSampleUsers.ts",
-    "insert-sample-data": "ts-node src/scripts/insertSampleData.ts",
-    "test-api": "ts-node src/scripts/testApiEndpoints.ts"
+    "start": "nodemon index.ts",
+    "build": "tsc --outDir dist",
+    "serve": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
@@ -20,11 +16,11 @@
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.3",
+    "mongoose": "^8.20.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0"
   },
@@ -36,7 +32,7 @@
     "@types/node": "^20.10.4",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.6",
-    "nodemon": "^3.0.2",
+    "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
