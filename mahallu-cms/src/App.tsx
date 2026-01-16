@@ -85,6 +85,8 @@ import InstituteDetail from './features/institutes/pages/InstituteDetail';
 import NotificationsList from './features/notifications/pages/NotificationsList';
 import TenantsList from './features/admin/pages/TenantsList';
 import CreateTenant from './features/admin/pages/CreateTenant';
+import TenantDetails from './features/admin/pages/TenantDetails';
+import EditTenant from './features/admin/pages/EditTenant';
 import MahallMain from './features/admin/pages/MahallMain';
 import { ROUTES } from './constants/routes';
 
@@ -139,6 +141,46 @@ function App() {
             <ProtectedRoute superAdminOnly>
               <MainLayout>
                 <CreateTenant />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/tenants/:id"
+          element={
+            <ProtectedRoute superAdminOnly>
+              <MainLayout>
+                <TenantDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/tenants/:id/edit"
+          element={
+            <ProtectedRoute superAdminOnly>
+              <MainLayout>
+                <EditTenant />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/tenants/:id"
+          element={
+            <ProtectedRoute superAdminOnly>
+              <MainLayout>
+                <TenantDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/tenants/:id/edit"
+          element={
+            <ProtectedRoute superAdminOnly>
+              <MainLayout>
+                <EditTenant />
               </MainLayout>
             </ProtectedRoute>
           }

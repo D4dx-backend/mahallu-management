@@ -9,7 +9,8 @@ export const getAllPrograms = async (req: AuthRequest, res: Response) => {
     const { page, limit, skip } = getPaginationParams(req);
     const query: any = { type: 'program' };
 
-    if (!req.isSuperAdmin && req.tenantId) {
+    // Apply tenant filter - req.tenantId includes x-tenant-id header for super admin viewing as tenant
+    if (req.tenantId) {
       query.tenantId = req.tenantId;
     } else if (tenantId && req.isSuperAdmin) {
       query.tenantId = tenantId;

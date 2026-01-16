@@ -21,25 +21,6 @@ export const createFamilyValidation = [
     .isIn(['Area A', 'Area B', 'Area C', 'Area D'])
     .withMessage('Invalid area'),
   body('place').optional().trim(),
-  body('via').optional().trim(),
-  body('state')
-    .trim()
-    .notEmpty()
-    .withMessage('State is required'),
-  body('district')
-    .trim()
-    .notEmpty()
-    .withMessage('District is required'),
-  body('pinCode').optional().trim(),
-  body('postOffice').optional().trim(),
-  body('lsgName')
-    .trim()
-    .notEmpty()
-    .withMessage('LSG Name is required'),
-  body('village')
-    .trim()
-    .notEmpty()
-    .withMessage('Village is required'),
   body('status')
     .optional()
     .isIn(['approved', 'unapproved', 'pending'])

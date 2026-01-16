@@ -10,12 +10,19 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     const { page, limit, skip } = getPaginationParams(req);
     const query: any = {};
 
-    // Super admin can see all users, others only see their tenant users
-    if (!req.isSuperAdmin && req.tenantId) {
+    // Determine which tenant to filter by
+    // Priority: 1. req.tenantId (from middleware - includes x-tenant-id header)
+    //          2. tenantId query param (for super admin)
+    //          3. No filter (super admin seeing all)
+    
+    if (req.tenantId) {
+      // Non-super admin user or super admin viewing as tenant (from x-tenant-id header)
       query.tenantId = req.tenantId;
     } else if (tenantId && req.isSuperAdmin) {
+      // Super admin explicitly filtering by tenant via query param
       query.tenantId = tenantId;
     }
+    // If none of above, super admin sees all users (no tenant filter)
 
     if (role) query.role = role;
     // Filter by status - if not specified, show active users only

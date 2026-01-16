@@ -8,11 +8,13 @@ import CommandPalette from '@/components/ui/CommandPalette';
 
 export default function Header() {
   const { theme, toggleTheme } = useThemeStore();
-  const { user, logout, isSuperAdmin } = useAuthStore();
+  const { user, logout, isSuperAdmin, currentTenantId } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const isViewingAsTenant = isSuperAdmin && currentTenantId;
 
   useEffect(() => {
     setMounted(true);
@@ -82,6 +84,16 @@ export default function Header() {
   return (
     <>
       <CommandPalette isOpen={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+      
+      {/* Viewing as Tenant Banner */}
+      {isViewingAsTenant && (
+        <div className="sticky top-0 z-40 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 dark:bg-primary-700 text-white text-sm">
+          <FiShield className="h-4 w-4" />
+          <span className="font-medium">Viewing as Tenant</span>
+          <span className="opacity-75">•</span>
+          <span className="opacity-90">All data is filtered for the selected tenant</span>
+        </div>
+      )}
       
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200/50 bg-white/80 backdrop-blur-md px-6 dark:border-gray-800/50 dark:bg-gray-900/80">
         <div className="flex items-center gap-4">

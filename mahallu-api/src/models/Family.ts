@@ -11,13 +11,6 @@ export interface IFamily extends Document {
   houseNo?: string;
   area?: string;
   place?: string;
-  via?: string;
-  state: string;
-  district: string;
-  pinCode?: string;
-  postOffice?: string;
-  lsgName: string;
-  village: string;
   status: 'approved' | 'unapproved' | 'pending';
   createdAt: Date;
   updatedAt: Date;
@@ -66,38 +59,6 @@ const FamilySchema = new Schema<IFamily>(
     },
     place: {
       type: String,
-      trim: true,
-    },
-    via: {
-      type: String,
-      trim: true,
-    },
-    state: {
-      type: String,
-      required: [true, 'State is required'],
-      trim: true,
-    },
-    district: {
-      type: String,
-      required: [true, 'District is required'],
-      trim: true,
-    },
-    pinCode: {
-      type: String,
-      trim: true,
-    },
-    postOffice: {
-      type: String,
-      trim: true,
-    },
-    lsgName: {
-      type: String,
-      required: [true, 'LSG Name is required'],
-      trim: true,
-    },
-    village: {
-      type: String,
-      required: [true, 'Village is required'],
       trim: true,
     },
     status: {

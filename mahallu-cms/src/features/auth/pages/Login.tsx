@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
+import { BRAND_NAME, LOGO_PATH } from '@/constants/theme';
 
 const phoneSchema = z.object({
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
@@ -113,11 +114,15 @@ export default function Login() {
 
       <Card className="w-full max-w-md relative z-10 border-white/50 dark:border-gray-800 shadow-xl" padding="lg">
         <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 items-center justify-center text-white font-bold text-2xl shadow-lg shadow-primary-500/30 mb-4">
-            K
+          <div className="inline-flex mb-4">
+            <img 
+              src={LOGO_PATH} 
+              alt={BRAND_NAME}
+              className="h-16 w-16 object-contain"
+            />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
-          Jamaah Hub
+            {BRAND_NAME}
           </h1>
           <p className="text-gray-500 dark:text-gray-400">
             Sign in to your account to continue

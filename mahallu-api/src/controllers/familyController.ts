@@ -11,12 +11,14 @@ export const getAllFamilies = async (req: AuthRequest, res: Response) => {
     const { page, limit, skip } = getPaginationParams(req);
     const query: any = {};
 
-    // Super admin can see all families, others only see their tenant families
-    if (!req.isSuperAdmin && req.tenantId) {
+    // Apply tenant filter
+    // req.tenantId is set by authMiddleware and includes x-tenant-id header for super admin viewing as tenant
+    if (req.tenantId) {
       query.tenantId = req.tenantId;
     } else if (tenantId && req.isSuperAdmin) {
       query.tenantId = tenantId;
     }
+    // If neither, super admin sees all families
 
     if (status) query.status = status;
     if (area) query.area = area;
@@ -71,6 +73,21 @@ export const createFamily = async (req: AuthRequest, res: Response) => {
         message: 'Tenant ID is required',
       });
     }
+
+    // Auto-generate mahallId (Family ID) in format FID{number}
+    const lastFamily = await Family.findOne({ tenantId: familyData.tenantId })
+      .sort({ createdAt: -1 })
+      .select('mahallId');
+    
+    let nextNumber = 1;
+    if (lastFamily && lastFamily.mahallId) {
+      // Extract number from last family ID (e.g., "FID123" -> 123)
+      const match = lastFamily.mahallId.match(/FID(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1]) + 1;
+      }
+    }
+    familyData.mahallId = `FID${nextNumber}`;
 
     const family = new Family(familyData);
     await family.save();

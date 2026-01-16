@@ -19,9 +19,37 @@ export interface DashboardStats {
   };
 }
 
+export interface RecentFamily {
+  id: string;
+  familyName: string;
+  mahallId: string;
+  createdAt: string;
+  status: string;
+}
+
+export interface ActivityTimelineData {
+  name: string;
+  date: string;
+  value: number;
+}
+
 export const dashboardService = {
   getStats: async () => {
     const response = await api.get<{ success: boolean; data: DashboardStats }>('/dashboard/stats');
+    return response.data.data;
+  },
+  
+  getRecentFamilies: async (limit: number = 5) => {
+    const response = await api.get<{ success: boolean; data: RecentFamily[] }>('/dashboard/recent-families', {
+      params: { limit },
+    });
+    return response.data.data;
+  },
+  
+  getActivityTimeline: async (days: number = 7) => {
+    const response = await api.get<{ success: boolean; data: ActivityTimelineData[] }>('/dashboard/activity-timeline', {
+      params: { days },
+    });
     return response.data.data;
   },
 };

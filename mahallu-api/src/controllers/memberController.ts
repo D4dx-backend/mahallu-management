@@ -11,12 +11,14 @@ export const getAllMembers = async (req: AuthRequest, res: Response) => {
     const { page, limit, skip } = getPaginationParams(req);
     const query: any = {};
 
-    // Super admin can see all members, others only see their tenant members
-    if (!req.isSuperAdmin && req.tenantId) {
+    // Apply tenant filter
+    // req.tenantId is set by authMiddleware and includes x-tenant-id header for super admin viewing as tenant
+    if (req.tenantId) {
       query.tenantId = req.tenantId;
     } else if (tenantId && req.isSuperAdmin) {
       query.tenantId = tenantId;
     }
+    // If neither, super admin sees all members
 
     // Filter by status - default to active only, unless explicitly requested
     if (status) {
@@ -90,8 +92,9 @@ export const createMember = async (req: AuthRequest, res: Response) => {
     }
 
     // Verify family exists and belongs to the same tenant
+    let family;
     if (familyId) {
-      const family = await Family.findById(familyId);
+      family = await Family.findById(familyId);
       if (!family) {
         return res.status(404).json({
           success: false,
@@ -118,6 +121,14 @@ export const createMember = async (req: AuthRequest, res: Response) => {
         success: false,
         message: 'Family name is required',
       });
+    }
+
+    // Auto-generate mahallId (Member ID) based on Family ID
+    // Format: FID123-1, FID123-2, etc.
+    if (family && family.mahallId) {
+      // Count existing members in this family to get next number
+      const memberCount = await Member.countDocuments({ familyId: family._id });
+      memberData.mahallId = `${family.mahallId}-${memberCount + 1}`;
     }
 
     const member = new Member({

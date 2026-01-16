@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDashboardStats } from '../controllers/dashboardController';
+import { getDashboardStats, getRecentFamilies, getActivityTimeline } from '../controllers/dashboardController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { tenantMiddleware } from '../middleware/tenantMiddleware';
 
@@ -7,6 +7,9 @@ const router = express.Router();
 
 router.use(authMiddleware);
 router.use(tenantMiddleware);
+
+router.get('/recent-families', getRecentFamilies);
+router.get('/activity-timeline', getActivityTimeline);
 
 /**
  * @swagger

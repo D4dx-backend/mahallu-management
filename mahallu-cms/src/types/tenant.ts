@@ -23,6 +23,12 @@ export interface Tenant {
   };
   settings: {
     varisangyaAmount: number;
+    varisangyaGrades?: Array<{
+      name: string;
+      amount: number;
+    }>;
+    educationOptions?: string[];
+    areaOptions?: string[];
     features: Record<string, boolean>;
   };
   createdAt: string;

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { FiDownload, FiPrinter } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { reportService, AreaReport } from '@/services/reportService';
+import { exportToPDF } from '@/utils/exportUtils';
 
 export default function AreaReportPage() {
   const [report, setReport] = useState<AreaReport | null>(null);
@@ -26,6 +28,56 @@ export default function AreaReportPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    if (!report) return;
+    const csvData = report.families.map(family => ({
+      'House Name': family.houseName,
+      Area: family.area || '-',
+      Members: family.memberCount
+    }));
+    
+    const headers = ['House Name', 'Area', 'Members'];
+    const csvRows = [headers.join(',')];
+    
+    csvData.forEach(row => {
+      const values = headers.map(header => {
+        const value = row[header as keyof typeof row] ?? '';
+        const escaped = String(value).replace(/"/g, '""');
+        return escaped.includes(',') ? `"${escaped}"` : escaped;
+      });
+      csvRows.push(values.join(','));
+    });
+    
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `area-report-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintPDF = () => {
+    if (!report) return;
+    const columns = [
+      { key: 'houseName', label: 'House Name' },
+      { key: 'area', label: 'Area' },
+      { key: 'memberCount', label: 'Members' }
+    ];
+    
+    const data = report.families.map(family => ({
+      houseName: family.houseName,
+      area: family.area || '-',
+      memberCount: family.memberCount
+    }));
+    
+    exportToPDF(columns, data, `area-report-${new Date().toISOString().split('T')[0]}`, 'Area Report');
   };
 
   if (loading) {
@@ -51,9 +103,29 @@ export default function AreaReportPage() {
     <div className="space-y-6">
       <Breadcrumb items={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Area Report' }]} />
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Area Report</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Area-wise family and member statistics</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Area Report</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Area-wise family and member statistics</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <FiDownload className="h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button
+            onClick={handlePrintPDF}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <FiPrinter className="h-4 w-4" />
+            Print PDF
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
