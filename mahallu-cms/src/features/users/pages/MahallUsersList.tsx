@@ -100,7 +100,33 @@ export default function MahallUsersList() {
 
   const columns: TableColumn<User>[] = [
     { key: 'id', label: 'No.', render: (_, __, index) => index + 1 },
-    { key: 'name', label: 'Name' },
+    { 
+      key: 'name', 
+      label: 'Name',
+      render: (name, row) => (
+        <div>
+          <div className="font-medium text-gray-900 dark:text-white">{name}</div>
+          <span
+            className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full ${
+              row.status === 'active'
+                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+            }`}
+          >
+            {row.status}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'tenant',
+      label: 'Tenant',
+      render: (tenant, row: any) => {
+        // Check both tenant and tenantId fields (populated reference)
+        const tenantData = tenant || row.tenantId;
+        return tenantData?.name || '-';
+      },
+    },
     { key: 'phone', label: 'Phone' },
     {
       key: 'email',
@@ -116,21 +142,6 @@ export default function MahallUsersList() {
       key: 'lastLogin',
       label: 'Last Login',
       render: (lastLogin) => (lastLogin ? formatDateTime(lastLogin) : '-'),
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (status) => (
-        <span
-          className={`px-2 py-1 text-xs font-medium rounded-full ${
-            status === 'active'
-              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-          }`}
-        >
-          {status}
-        </span>
-      ),
     },
     {
       key: 'actions',

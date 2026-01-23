@@ -70,9 +70,30 @@ export const createTenant = async (req: AuthRequest, res: Response) => {
 
 export const updateTenant = async (req: AuthRequest, res: Response) => {
   try {
+    // Handle nested settings update properly
+    const updateData = { ...req.body };
+    
+    // If settings is being updated, ensure it's merged correctly
+    if (updateData.settings) {
+      const existingTenant = await Tenant.findById(req.params.id);
+      if (existingTenant) {
+        // Convert entire tenant to plain object to access nested settings
+        const plainTenant = existingTenant.toObject();
+        const existingSettings = plainTenant.settings || {};
+        
+        updateData.settings = {
+          ...existingSettings,
+          ...updateData.settings,
+          // Ensure arrays are properly replaced, not merged
+          varisangyaGrades: updateData.settings.varisangyaGrades || existingSettings.varisangyaGrades,
+          educationOptions: updateData.settings.educationOptions || existingSettings.educationOptions,
+        };
+      }
+    }
+    
     const tenant = await Tenant.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
 

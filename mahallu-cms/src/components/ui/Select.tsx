@@ -15,9 +15,24 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [focusedIndex, setFocusedIndex] = useState(-1);
+    const [internalValue, setInternalValue] = useState(value || '');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const selectRef = useRef<HTMLSelectElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Sync internalValue with value prop
+    useEffect(() => {
+      if (value !== undefined) {
+        setInternalValue(value);
+      }
+    }, [value]);
+
+    // Sync internalValue with native select element on mount
+    useEffect(() => {
+      if (selectRef.current?.value) {
+        setInternalValue(selectRef.current.value);
+      }
+    }, []);
 
     // Determine if we need search (more than 10 options)
     const needsSearch = options.length > 10;
@@ -30,9 +45,9 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
         )
       : options;
 
-    // Get selected option label
-    const selectedOption = options.find((opt) => opt.value === value);
-    const displayValue = selectedOption?.label || (value === '' ? '' : value);
+    // Get selected option label using internalValue
+    const selectedOption = options.find((opt) => opt.value === internalValue);
+    const displayValue = selectedOption?.label || (internalValue === '' ? '' : internalValue);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -76,6 +91,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           e.preventDefault();
           const option = filteredOptions[focusedIndex];
           if (option && selectRef.current) {
+            setInternalValue(option.value);
             selectRef.current.value = option.value;
             selectRef.current.dispatchEvent(new Event('change', { bubbles: true }));
             setIsOpen(false);
@@ -90,6 +106,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     }, [isOpen, filteredOptions, focusedIndex]);
 
     const handleSelect = (optionValue: string) => {
+      setInternalValue(optionValue);
       if (selectRef.current) {
         selectRef.current.value = optionValue;
         const event = new Event('change', { bubbles: true });
@@ -129,8 +146,11 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
               }
               selectRef.current = node;
             }}
-            value={value}
-            onChange={onChange}
+            value={internalValue}
+            onChange={(e) => {
+              setInternalValue(e.target.value);
+              onChange?.(e);
+            }}
             className="sr-only"
             disabled={disabled}
             {...props}
@@ -222,7 +242,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
                       className={cn(
                         'w-full px-3.5 py-2.5 text-left text-sm transition-colors duration-150',
                         'hover:bg-gray-50 dark:hover:bg-gray-800',
-                        value === option.value && 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400',
+                        internalValue === option.value && 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400',
                         index === focusedIndex && 'bg-gray-50 dark:bg-gray-800',
                         index === 0 && 'rounded-t-lg',
                         index === filteredOptions.length - 1 && 'rounded-b-lg'

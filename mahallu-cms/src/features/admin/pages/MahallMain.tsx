@@ -20,12 +20,18 @@ const settingsSchema = z.object({
 type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export default function MahallMain() {
-  const { currentTenantId } = useAuthStore();
+  const { currentTenantId, user } = useAuthStore();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [grades, setGrades] = useState<Array<{ name: string; amount: number }>>([]);
+  const [educationOptions, setEducationOptions] = useState<string[]>([]);
+  const [areaOptions, setAreaOptions] = useState<string[]>([]);
+
+  // Get tenant ID: prioritize currentTenantId (super admin viewing as tenant), fallback to user's tenantId
+  const tenantId = currentTenantId || user?.tenantId;
 
   const {
     register,
@@ -37,21 +43,43 @@ export default function MahallMain() {
   });
 
   useEffect(() => {
-    if (currentTenantId) {
+    if (tenantId) {
       fetchTenant();
     } else {
-      setError('No tenant selected');
+      setError('No tenant assigned to your account');
       setLoading(false);
     }
-  }, [currentTenantId]);
+  }, [tenantId]);
 
   const fetchTenant = async () => {
-    if (!currentTenantId) return;
+    if (!tenantId) return;
     try {
       setLoading(true);
       setError(null);
-      const data = await tenantService.getById(currentTenantId);
+      const data = await tenantService.getById(tenantId);
       setTenant(data);
+      setGrades(data.settings?.varisangyaGrades || [
+        { name: 'Grade A', amount: 100 },
+        { name: 'Grade B', amount: 75 },
+        { name: 'Grade C', amount: 50 },
+        { name: 'Grade D', amount: 25 },
+      ]);
+      setEducationOptions(data.settings?.educationOptions || [
+        'Below SSLC',
+        'SSLC',
+        'Plus Two',
+        'Degree',
+        'Diploma',
+        'Post Graduation',
+        'Doctorate',
+        'MBBS',
+      ]);
+      setAreaOptions(data.settings?.areaOptions || [
+        'Area A',
+        'Area B',
+        'Area C',
+        'Area D',
+      ]);
       reset({
         varisangyaAmount: data.settings?.varisangyaAmount || 0,
       });
@@ -64,17 +92,20 @@ export default function MahallMain() {
   };
 
   const onSubmit = async (data: SettingsFormData) => {
-    if (!currentTenantId || !tenant) return;
+    if (!tenantId || !tenant) return;
 
     try {
       setSaving(true);
       setError(null);
       setSuccess(null);
 
-      await tenantService.update(currentTenantId, {
+      await tenantService.update(tenantId, {
         settings: {
           ...tenant.settings,
           varisangyaAmount: data.varisangyaAmount,
+          varisangyaGrades: grades,
+          educationOptions: educationOptions,
+          areaOptions: areaOptions,
         },
       });
 
@@ -267,6 +298,169 @@ export default function MahallMain() {
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Default amount for varisangya payments
                 </p>
+              </div>
+
+              {/* Varisangya Grades */}
+              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  Varisangya Grades
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Configure different grade levels with their corresponding amounts
+                </p>
+                
+                <div className="space-y-3">
+                  {grades.map((grade, index) => (
+                    <div key={index} className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <Input
+                          value={grade.name}
+                          onChange={(e) => {
+                            const newGrades = [...grades];
+                            newGrades[index].name = e.target.value;
+                            setGrades(newGrades);
+                          }}
+                          placeholder="Grade name (e.g., Grade A)"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={grade.amount}
+                          onChange={(e) => {
+                            const newGrades = [...grades];
+                            newGrades[index].amount = parseFloat(e.target.value) || 0;
+                            setGrades(newGrades);
+                          }}
+                          placeholder="Amount"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const newGrades = grades.filter((_, i) => i !== index);
+                          setGrades(newGrades);
+                        }}
+                        className="whitespace-nowrap"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setGrades([...grades, { name: `Grade ${String.fromCharCode(65 + grades.length)}`, amount: 0 }]);
+                    }}
+                    className="w-full mt-2"
+                  >
+                    + Add Grade
+                  </Button>
+                </div>
+              </div>
+
+              {/* Education Options */}
+              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  Education Options
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Configure education qualification options for member profiles
+                </p>
+                
+                <div className="space-y-3">
+                  {educationOptions.map((option, index) => (
+                    <div key={index} className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <Input
+                          value={option}
+                          onChange={(e) => {
+                            const newOptions = [...educationOptions];
+                            newOptions[index] = e.target.value;
+                            setEducationOptions(newOptions);
+                          }}
+                          placeholder="Education option (e.g., SSLC)"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const newOptions = educationOptions.filter((_, i) => i !== index);
+                          setEducationOptions(newOptions);
+                        }}
+                        className="whitespace-nowrap"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setEducationOptions([...educationOptions, '']);
+                    }}
+                    className="w-full mt-2"
+                  >
+                    + Add Education Option
+                  </Button>
+                </div>
+              </div>
+
+              {/* Area Options */}
+              <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  Area Options
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Configure area/locality options for family addresses
+                </p>
+                
+                <div className="space-y-3">
+                  {areaOptions.map((option, index) => (
+                    <div key={index} className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <Input
+                          value={option}
+                          onChange={(e) => {
+                            const newOptions = [...areaOptions];
+                            newOptions[index] = e.target.value;
+                            setAreaOptions(newOptions);
+                          }}
+                          placeholder="Area option (e.g., Area A)"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          const newOptions = areaOptions.filter((_, i) => i !== index);
+                          setAreaOptions(newOptions);
+                        }}
+                        className="whitespace-nowrap"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setAreaOptions([...areaOptions, '']);
+                    }}
+                    className="w-full mt-2"
+                  >
+                    + Add Area Option
+                  </Button>
+                </div>
               </div>
             </div>
 

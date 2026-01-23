@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FiChevronDown, FiLayers, FiCheck, FiSearch } from 'react-icons/fi';
+import { FiChevronDown, FiLayers, FiCheck, FiSearch, FiX } from 'react-icons/fi';
 import { useAuthStore } from '@/store/authStore';
 import { tenantService } from '@/services/tenantService';
 import { Tenant } from '@/types/tenant';
@@ -13,6 +13,8 @@ export default function TenantSwitcher() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const isViewingAsTenant = isSuperAdmin && currentTenantId;
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -68,6 +70,14 @@ export default function TenantSwitcher() {
     window.location.reload();
   };
 
+  const handleSwitchToSuperAdmin = () => {
+    setCurrentTenant(null);
+    setCurrentTenantData(null);
+    setIsOpen(false);
+    // Reload to switch back to super admin view
+    window.location.reload();
+  };
+
   const filteredTenants = tenants.filter((tenant) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -86,21 +96,42 @@ export default function TenantSwitcher() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border border-transparent",
-          isOpen 
-            ? "bg-gray-100 text-gray-900 border-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700" 
-            : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors border",
+          isViewingAsTenant
+            ? "bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/20 dark:text-primary-400 dark:border-primary-800"
+            : isOpen 
+              ? "bg-gray-100 text-gray-900 border-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700" 
+              : "border-transparent text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
         )}
       >
         <FiLayers className="h-4 w-4" />
         <span className="hidden md:inline max-w-[150px] truncate">
           {currentTenant ? currentTenant.name : 'Select Tenant'}
         </span>
+        {isViewingAsTenant && (
+          <span className="text-xs px-1.5 py-0.5 bg-primary-100 dark:bg-primary-800 rounded">Viewing</span>
+        )}
         <FiChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
       </button>
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50 max-h-[500px] flex flex-col">
+          {/* Switch back to Super Admin option */}
+          {isViewingAsTenant && (
+            <div className="px-3 pb-2 mb-2 border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={handleSwitchToSuperAdmin}
+                className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm font-medium rounded-md bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/30 text-red-700 dark:text-red-400 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <FiX className="h-4 w-4" />
+                  <span>Exit Tenant View</span>
+                </div>
+                <span className="text-xs opacity-75">Back to Super Admin</span>
+              </button>
+            </div>
+          )}
+
           <div className="px-3 pb-2 border-b border-gray-100 dark:border-gray-800">
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />

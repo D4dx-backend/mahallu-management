@@ -8,7 +8,8 @@ export const getAreaReport = async (req: AuthRequest, res: Response) => {
     const { area, tenantId } = req.query;
     const query: any = {};
 
-    if (!req.isSuperAdmin && req.tenantId) {
+    // Apply tenant filter - req.tenantId includes x-tenant-id header for super admin viewing as tenant
+    if (req.tenantId) {
       query.tenantId = req.tenantId;
     } else if (tenantId && req.isSuperAdmin) {
       query.tenantId = tenantId;
@@ -44,7 +45,8 @@ export const getBloodBankReport = async (req: AuthRequest, res: Response) => {
     const { bloodGroup, tenantId } = req.query;
     const query: any = {};
 
-    if (!req.isSuperAdmin && req.tenantId) {
+    // Apply tenant filter - req.tenantId includes x-tenant-id header for super admin viewing as tenant
+    if (req.tenantId) {
       query.tenantId = req.tenantId;
     } else if (tenantId && req.isSuperAdmin) {
       query.tenantId = tenantId;
@@ -79,7 +81,8 @@ export const getOrphansReport = async (req: AuthRequest, res: Response) => {
     const { tenantId } = req.query;
     const query: any = {};
 
-    if (!req.isSuperAdmin && req.tenantId) {
+    // Apply tenant filter - req.tenantId includes x-tenant-id header for super admin viewing as tenant
+    if (req.tenantId) {
       query.tenantId = req.tenantId;
     } else if (tenantId && req.isSuperAdmin) {
       query.tenantId = tenantId;

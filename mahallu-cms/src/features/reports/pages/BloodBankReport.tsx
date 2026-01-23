@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { FiDownload, FiPrinter } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { reportService, BloodBankReport } from '@/services/reportService';
+import { exportToPDF } from '@/utils/exportUtils';
 
 export default function BloodBankReportPage() {
   const [bloodGroupFilter, setBloodGroupFilter] = useState('all');
@@ -32,6 +34,62 @@ export default function BloodBankReportPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    if (!report) return;
+    const csvData = report.members.map(member => ({
+      Name: member.name,
+      'Blood Group': member.bloodGroup,
+      Age: member.age || '-',
+      Gender: member.gender || '-',
+      Phone: member.phone || '-'
+    }));
+    
+    const headers = ['Name', 'Blood Group', 'Age', 'Gender', 'Phone'];
+    const csvRows = [headers.join(',')];
+    
+    csvData.forEach(row => {
+      const values = headers.map(header => {
+        const value = row[header as keyof typeof row] ?? '';
+        const escaped = String(value).replace(/"/g, '""');
+        return escaped.includes(',') ? `"${escaped}"` : escaped;
+      });
+      csvRows.push(values.join(','));
+    });
+    
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `blood-bank-report-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintPDF = () => {
+    if (!report) return;
+    const columns = [
+      { key: 'name', label: 'Name' },
+      { key: 'bloodGroup', label: 'Blood Group' },
+      { key: 'age', label: 'Age' },
+      { key: 'gender', label: 'Gender' },
+      { key: 'phone', label: 'Phone' }
+    ];
+    
+    const data = report.members.map(member => ({
+      name: member.name,
+      bloodGroup: member.bloodGroup,
+      age: member.age || '-',
+      gender: member.gender || '-',
+      phone: member.phone || '-'
+    }));
+    
+    exportToPDF(columns, data, `blood-bank-report-${new Date().toISOString().split('T')[0]}`, 'Blood Bank Report');
   };
 
   if (loading) {
@@ -62,7 +120,24 @@ export default function BloodBankReportPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Blood Bank Report</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Blood group statistics and member details</p>
         </div>
-        <Select
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <FiDownload className="h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button
+            onClick={handlePrintPDF}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <FiPrinter className="h-4 w-4" />
+            Print PDF
+          </Button>
+          <Select
           options={[
             { value: 'all', label: 'All Blood Groups' },
             { value: 'A +ve', label: 'A +ve' },
@@ -77,7 +152,8 @@ export default function BloodBankReportPage() {
           value={bloodGroupFilter}
           onChange={(e) => setBloodGroupFilter(e.target.value)}
           className="w-48"
-        />
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

@@ -6,43 +6,63 @@ import StatCard from '@/components/ui/StatCard';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { dashboardService, DashboardStats } from '@/services/dashboardService';
+import { dashboardService, DashboardStats, RecentFamily, ActivityTimelineData } from '@/services/dashboardService';
 import { ROUTES } from '@/constants/routes';
+import { formatDate } from '@/utils/format';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
-
-// Dummy data for area chart
-const AREA_DATA = [
-  { name: 'Mon', value: 400 },
-  { name: 'Tue', value: 300 },
-  { name: 'Wed', value: 500 },
-  { name: 'Thu', value: 280 },
-  { name: 'Fri', value: 590 },
-  { name: 'Sat', value: 320 },
-  { name: 'Sun', value: 450 },
-];
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentFamilies, setRecentFamilies] = useState<RecentFamily[]>([]);
+  const [activityTimeline, setActivityTimeline] = useState<ActivityTimelineData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchStats();
+    fetchDashboardData();
   }, []);
 
-  const fetchStats = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await dashboardService.getStats();
-      setStats(data);
+      const [statsData, familiesData, timelineData] = await Promise.all([
+        dashboardService.getStats(),
+        dashboardService.getRecentFamilies(5),
+        dashboardService.getActivityTimeline(7),
+      ]);
+      setStats(statsData);
+      setRecentFamilies(familiesData);
+      setActivityTimeline(timelineData);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load dashboard statistics');
-      console.error('Error fetching dashboard stats:', err);
+      setError(err.response?.data?.message || 'Failed to load dashboard data');
+      console.error('Error fetching dashboard data:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'NA';
+    const words = name.split(' ').filter(word => word.length > 0);
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    return formatDate(dateString);
   };
 
   const statCards = stats
@@ -101,7 +121,7 @@ export default function Dashboard() {
       <div className="flex flex-col items-center justify-center h-[calc(100vh-100px)]">
         <p className="text-red-600 dark:text-red-400 mb-4 text-lg">{error}</p>
         <button
-          onClick={fetchStats}
+          onClick={fetchDashboardData}
           className="px-6 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors shadow-sm font-medium"
         >
           Retry
@@ -141,7 +161,7 @@ export default function Dashboard() {
             </div>
             <div className="h-[300px] w-full">
                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={AREA_DATA}>
+                    <AreaChart data={activityTimeline}>
                         <defs>
                             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -191,21 +211,31 @@ export default function Dashboard() {
                  <p className="text-sm text-gray-500 dark:text-gray-400">Recent family entries</p>
             </div>
             <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border border-transparent hover:border-gray-100 dark:hover:border-gray-800">
-                        <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold">
-                            {String.fromCharCode(64 + i)}
+                {recentFamilies.length > 0 ? (
+                  recentFamilies.map((family) => (
+                    <div 
+                      key={family.id} 
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer border border-transparent hover:border-gray-100 dark:hover:border-gray-800"
+                      onClick={() => navigate(`/families/${family.id}`)}
+                    >
+                        <div className="h-10 w-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-bold text-sm">
+                            {getInitials(family.familyName)}
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                                Family Name {i}
+                                {family.familyName}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                {i * 2} days ago
+                                {getTimeAgo(family.createdAt)}
                             </p>
                         </div>
                     </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    No recent families
+                  </div>
+                )}
             </div>
         </Card>
       </div>

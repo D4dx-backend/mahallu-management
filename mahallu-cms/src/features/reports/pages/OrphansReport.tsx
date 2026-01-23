@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { FiDownload, FiPrinter } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { reportService, OrphansReport } from '@/services/reportService';
+import { exportToPDF } from '@/utils/exportUtils';
 
 export default function OrphansReportPage() {
   const [report, setReport] = useState<OrphansReport | null>(null);
@@ -26,6 +28,59 @@ export default function OrphansReportPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    if (!report) return;
+    const csvData = report.orphans.map(orphan => ({
+      Name: orphan.name,
+      Age: orphan.age || '-',
+      Gender: orphan.gender || '-',
+      Family: orphan.familyName
+    }));
+    
+    const headers = ['Name', 'Age', 'Gender', 'Family'];
+    const csvRows = [headers.join(',')];
+    
+    csvData.forEach(row => {
+      const values = headers.map(header => {
+        const value = row[header as keyof typeof row] ?? '';
+        const escaped = String(value).replace(/"/g, '""');
+        return escaped.includes(',') ? `"${escaped}"` : escaped;
+      });
+      csvRows.push(values.join(','));
+    });
+    
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orphans-report-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintPDF = () => {
+    if (!report) return;
+    const columns = [
+      { key: 'name', label: 'Name' },
+      { key: 'age', label: 'Age' },
+      { key: 'gender', label: 'Gender' },
+      { key: 'familyName', label: 'Family' }
+    ];
+    
+    const data = report.orphans.map(orphan => ({
+      name: orphan.name,
+      age: orphan.age || '-',
+      gender: orphan.gender || '-',
+      familyName: orphan.familyName
+    }));
+    
+    exportToPDF(columns, data, `orphans-report-${new Date().toISOString().split('T')[0]}`, 'Orphans Report');
   };
 
   if (loading) {
@@ -51,9 +106,29 @@ export default function OrphansReportPage() {
     <div className="space-y-6">
       <Breadcrumb items={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Orphans Report' }]} />
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Orphans Report</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">List of orphaned members (under 18 years)</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Orphans Report</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">List of orphaned members (under 18 years)</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleExportCSV}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <FiDownload className="h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button
+            onClick={handlePrintPDF}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <FiPrinter className="h-4 w-4" />
+            Print PDF
+          </Button>
+        </div>
       </div>
 
       <Card>

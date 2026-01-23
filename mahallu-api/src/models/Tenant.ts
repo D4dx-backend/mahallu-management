@@ -24,6 +24,12 @@ export interface ITenant extends Document {
   };
   settings: {
     varisangyaAmount: number;
+    varisangyaGrades: Array<{
+      name: string;
+      amount: number;
+    }>;
+    educationOptions: string[];
+    areaOptions: string[];
     features: {
       [key: string]: boolean;
     };
@@ -81,6 +87,42 @@ const TenantSchema = new Schema<ITenant>(
     },
     settings: {
       varisangyaAmount: { type: Number, default: 0 },
+      varisangyaGrades: {
+        type: [
+          {
+            name: { type: String, required: true },
+            amount: { type: Number, required: true },
+          },
+        ],
+        default: [
+          { name: 'Grade A', amount: 100 },
+          { name: 'Grade B', amount: 75 },
+          { name: 'Grade C', amount: 50 },
+          { name: 'Grade D', amount: 25 },
+        ],
+      },
+      educationOptions: {
+        type: [String],
+        default: [
+          'Below SSLC',
+          'SSLC',
+          'Plus Two',
+          'Degree',
+          'Diploma',
+          'Post Graduation',
+          'Doctorate',
+          'MBBS',
+        ],
+      },
+      areaOptions: {
+        type: [String],
+        default: [
+          'Area A',
+          'Area B',
+          'Area C',
+          'Area D',
+        ],
+      },
       features: {
         type: Map,
         of: Boolean,

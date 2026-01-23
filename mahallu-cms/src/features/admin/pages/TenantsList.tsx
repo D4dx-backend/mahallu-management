@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FiTrash2, FiCheckCircle, FiXCircle, FiEye, FiX, FiGlobe, FiAlertCircle } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
@@ -20,6 +20,7 @@ import { exportToCSV, exportToJSON, exportToPDF } from '@/utils/exportUtils';
 
 export default function TenantsList() {
   const { isSuperAdmin } = useAuthStore();
+  const navigate = useNavigate();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,9 +164,7 @@ export default function TenantsList() {
           {
             label: 'View Details',
             icon: <FiEye />,
-            onClick: () => {
-              // Navigate to detail page or show modal
-            },
+            onClick: () => navigate(`/admin/tenants/${row.id}`),
           },
         ];
 

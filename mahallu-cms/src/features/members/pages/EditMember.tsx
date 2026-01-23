@@ -9,11 +9,14 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import RadioCardGroup from '@/components/ui/RadioCardGroup';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ROUTES } from '@/constants/routes';
 import { memberService } from '@/services/memberService';
 import { familyService } from '@/services/familyService';
+import { tenantService } from '@/services/tenantService';
 import { Family } from '@/types';
+import { useAuthStore } from '@/store/authStore';
 
 const memberSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -27,7 +30,10 @@ const memberSchema = z.object({
     .optional()
     .or(z.literal('')),
   healthStatus: z.string().optional(),
-  phone: z.string().optional(),
+  phone: z.string().optional().refine(
+    (val) => !val || /^\d{10}$/.test(val),
+    { message: 'Phone number must be exactly 10 digits' }
+  ),
   education: z.string().optional(),
 });
 
@@ -38,6 +44,7 @@ export default function EditMember() {
   const { id } = useParams<{ id: string }>();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [educationOptions, setEducationOptions] = useState<string[]>([]);
   const [families, setFamilies] = useState<Family[]>([]);
 
   const {
@@ -87,11 +94,32 @@ export default function EditMember() {
       setValue('familyName', member.familyName);
       setValue('mahallId', member.mahallId || '');
       setValue('age', member.age || '');
-      setValue('gender', member.gender || '');
-      setValue('bloodGroup', member.bloodGroup || '');
+      setValue('gender', (member.gender || '') as any);
+      setValue('bloodGroup', (member.bloodGroup || '') as any);
       setValue('healthStatus', member.healthStatus || '');
       setValue('phone', member.phone || '');
       setValue('education', member.education || '');
+
+      // Fetch education options from tenant settings
+      const { currentTenantId, user } = useAuthStore.getState();
+      const tenantId = currentTenantId || user?.tenantId;
+      if (tenantId) {
+        try {
+          const tenantData = await tenantService.getById(tenantId);
+          setEducationOptions(tenantData.settings?.educationOptions || [
+            'Below SSLC',
+            'SSLC',
+            'Plus Two',
+            'Degree',
+            'Diploma',
+            'Post Graduation',
+            'Doctorate',
+            'MBBS',
+          ]);
+        } catch (err) {
+          console.error('Failed to fetch education options:', err);
+        }
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load member');
     } finally {
@@ -126,13 +154,11 @@ export default function EditMember() {
   }
 
   const genderOptions = [
-    { value: '', label: 'Select gender...' },
     { value: 'male', label: 'Male' },
     { value: 'female', label: 'Female' },
   ];
 
   const bloodGroupOptions = [
-    { value: '', label: 'Select blood group...' },
     { value: 'A +ve', label: 'A +ve' },
     { value: 'A -ve', label: 'A -ve' },
     { value: 'B +ve', label: 'B +ve' },
@@ -205,9 +231,11 @@ export default function EditMember() {
               className="md:col-span-2"
             />
             <Input
-              label="Mahall ID"
+              label="Member ID (Auto-generated)"
               {...register('mahallId')}
-              placeholder="Mahall ID"
+              placeholder="Member ID"
+              disabled
+              className="bg-gray-50 dark:bg-gray-800"
             />
             <Input
               label="Age"
@@ -218,23 +246,38 @@ export default function EditMember() {
               min={0}
               max={150}
             />
-            <Select
+          </div>
+          
+          <div className="md:col-span-2">
+            <RadioCardGroup
               label="Gender"
               options={genderOptions}
-              {...register('gender')}
+              value={watch('gender') || ''}
+              onChange={(value) => setValue('gender', value as 'male' | 'female')}
               error={errors.gender?.message}
+              columns={2}
             />
-            <Select
+          </div>
+          
+          <div className="md:col-span-2">
+            <RadioCardGroup
               label="Blood Group"
               options={bloodGroupOptions}
-              {...register('bloodGroup')}
+              value={watch('bloodGroup') || ''}
+              onChange={(value) => setValue('bloodGroup', value as any)}
               error={errors.bloodGroup?.message}
+              columns={4}
             />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
             <Input
               label="Phone"
               type="tel"
               {...register('phone')}
-              placeholder="Phone Number"
+              error={errors.phone?.message}
+              placeholder="Phone Number (10 digits)"
+              maxLength={10}
             />
             <Input
               label="Health Status"
@@ -242,10 +285,13 @@ export default function EditMember() {
               placeholder="Health Status"
               className="md:col-span-2"
             />
-            <Input
+            <Select
               label="Education"
               {...register('education')}
-              placeholder="Education"
+              options={[
+                { value: '', label: 'Select Education' },
+                ...educationOptions.map(opt => ({ value: opt, label: opt }))
+              ]}
               className="md:col-span-2"
             />
           </div>

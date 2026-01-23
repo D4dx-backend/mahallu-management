@@ -12,26 +12,26 @@ import Select from '@/components/ui/Select';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ROUTES } from '@/constants/routes';
 import { familyService } from '@/services/familyService';
+import { tenantService } from '@/services/tenantService';
+import { useAuthStore } from '@/store/authStore';
 import { Family } from '@/types';
-import { STATES, getDistrictsByState } from '@/constants/locations';
 
 const familySchema = z.object({
   mahallId: z.string().optional(),
   varisangyaGrade: z.string().optional(),
   houseName: z.string().min(1, 'House Name is required'),
   familyHead: z.string().optional(),
-  contactNo: z.string().optional(),
-  wardNumber: z.string().optional(),
+  contactNo: z.string().optional().refine(
+    (val) => !val || /^\d{10}$/.test(val),
+    { message: 'Contact number must be exactly 10 digits' }
+  ),
+  wardNumber: z.string().optional().refine(
+    (val) => !val || /^\d+$/.test(val),
+    { message: 'Ward number must contain only digits' }
+  ),
   houseNo: z.string().optional(),
   area: z.string().optional(),
   place: z.string().optional(),
-  via: z.string().optional(),
-  state: z.string().min(1, 'State is required'),
-  district: z.string().min(1, 'District is required'),
-  pinCode: z.string().optional(),
-  postOffice: z.string().optional(),
-  lsgName: z.string().min(1, 'LSG Name is required'),
-  village: z.string().min(1, 'Village is required'),
   status: z.enum(['approved', 'unapproved', 'pending']).optional(),
 });
 
@@ -40,8 +40,27 @@ type FamilyFormData = z.infer<typeof familySchema>;
 export default function EditFamily() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { currentTenantId, user } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [grades, setGrades] = useState<Array<{ name: string; amount: number }>>([]);
+  const [areaOptions, setAreaOptions] = useState<string[]>([]);
+
+  const tenantId = currentTenantId || user?.tenantId;
+
+  useEffect(() => {
+    const fetchGrades = async () => {
+      if (tenantId) {
+        try {
+          const tenant = await tenantService.getById(tenantId);
+          setGrades(tenant.settings?.varisangyaGrades || []);
+        } catch (err) {
+          console.error('Error fetching grades:', err);
+        }
+      }
+    };
+    fetchGrades();
+  }, [tenantId]);
 
   const {
     register,
@@ -51,27 +70,7 @@ export default function EditFamily() {
     formState: { errors, isSubmitting },
   } = useForm<FamilyFormData>({
     resolver: zodResolver(familySchema),
-    defaultValues: {
-      state: 'Kerala',
-    },
   });
-
-  // Watch state changes to update districts
-  const selectedState = watch('state');
-  
-  // Get districts based on selected state
-  const districtOptions = selectedState ? getDistrictsByState(selectedState) : [];
-  
-  // Reset district when state changes
-  const handleStateChange = (value: string) => {
-    setValue('state', value);
-    // Only reset district if it's not in the new state's districts
-    const newDistricts = getDistrictsByState(value);
-    const currentDistrict = watch('district');
-    if (!newDistricts.find(d => d.value === currentDistrict)) {
-      setValue('district', '');
-    }
-  };
 
   useEffect(() => {
     if (id) {
@@ -92,13 +91,6 @@ export default function EditFamily() {
       setValue('houseNo', family.houseNo || '');
       setValue('area', family.area || '');
       setValue('place', family.place || '');
-      setValue('via', family.via || '');
-      setValue('state', family.state);
-      setValue('district', family.district);
-      setValue('pinCode', family.pinCode || '');
-      setValue('postOffice', family.postOffice || '');
-      setValue('lsgName', family.lsgName);
-      setValue('village', family.village);
       setValue('status', family.status || 'pending');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load family');
@@ -129,18 +121,15 @@ export default function EditFamily() {
 
   const gradeOptions = [
     { value: '', label: 'Select grade...' },
-    { value: 'Grade A', label: 'Grade A' },
-    { value: 'Grade B', label: 'Grade B' },
-    { value: 'Grade C', label: 'Grade C' },
-    { value: 'Grade D', label: 'Grade D' },
+    ...grades.map(grade => ({
+      value: grade.name,
+      label: `${grade.name} - ₹${grade.amount}`
+    }))
   ];
 
-  const areaOptions = [
+  const areaSelectOptions = [
     { value: '', label: 'Select area...' },
-    { value: 'Area A', label: 'Area A' },
-    { value: 'Area B', label: 'Area B' },
-    { value: 'Area C', label: 'Area C' },
-    { value: 'Area D', label: 'Area D' },
+    ...areaOptions.map(area => ({ value: area, label: area }))
   ];
 
   const statusOptions = [
@@ -179,9 +168,11 @@ export default function EditFamily() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Mahall ID"
+              label="Family ID (Auto-generated)"
               {...register('mahallId')}
-              placeholder="Mahall ID"
+              placeholder="Family ID"
+              disabled
+              className="bg-gray-50 dark:bg-gray-800"
             />
             <Select
               label="Varisangya Grade"
@@ -206,12 +197,16 @@ export default function EditFamily() {
               label="Contact No."
               type="tel"
               {...register('contactNo')}
-              placeholder="Contact No."
+              error={errors.contactNo?.message}
+              placeholder="Contact No. (10 digits)"
+              maxLength={10}
             />
             <Input
               label="Ward Number"
               {...register('wardNumber')}
+              error={errors.wardNumber?.message}
               placeholder="Ward Number"
+              type="number"
             />
             <Input
               label="House No."
@@ -220,68 +215,13 @@ export default function EditFamily() {
             />
             <Select
               label="Area"
-              options={areaOptions}
+              options={areaSelectOptions}
               {...register('area')}
             />
             <Input
               label="Place"
               {...register('place')}
               placeholder="Place"
-            />
-            <Input
-              label="Via"
-              {...register('via')}
-              placeholder="Via"
-            />
-            <Select
-              label="State"
-              options={STATES}
-              {...register('state', {
-                onChange: (e) => handleStateChange(e.target.value),
-              })}
-              error={errors.state?.message}
-              required
-            />
-            <Select
-              label="District"
-              options={[
-                { value: '', label: 'Select district...' },
-                ...districtOptions,
-              ]}
-              {...register('district')}
-              error={errors.district?.message}
-              required
-              disabled={!selectedState || districtOptions.length === 0}
-            />
-            <Input
-              label="Pin Code"
-              {...register('pinCode')}
-              placeholder="Pin Code"
-            />
-            <Input
-              label="Post Office"
-              {...register('postOffice')}
-              placeholder="Post Office"
-            />
-            <Select
-              label="LSG Name"
-              options={[
-                { value: 'Koodali', label: 'Koodali' },
-              ]}
-              {...register('lsgName')}
-              error={errors.lsgName?.message}
-              required
-              className="md:col-span-2"
-            />
-            <Select
-              label="Village"
-              options={[
-                { value: 'Kottoppadam-I', label: 'Kottoppadam-I' },
-              ]}
-              {...register('village')}
-              error={errors.village?.message}
-              required
-              className="md:col-span-2"
             />
             <Select
               label="Status"

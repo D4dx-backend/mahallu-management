@@ -1,165 +1,338 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { menuItems, MenuItem } from '@/constants/menuItems';
-import { FiChevronDown, FiChevronRight } from 'react-icons/fi';
+import { FiChevronRight, FiSearch } from 'react-icons/fi';
 import { cn } from '@/utils/cn';
 import { useAuthStore } from '@/store/authStore';
+import { BRAND_NAME, LOGO_PATH } from '@/constants/theme';
+import { useLayoutStore } from '@/store/layoutStore';
 
-interface MenuItemComponentProps {
-  item: MenuItem;
-  level?: number;
+interface SubMenuPanelProps {
+  item: MenuItem | null;
+  onClose: () => void;
+  open: boolean;
 }
 
-function MenuItemComponent({ item, level = 0 }: MenuItemComponentProps) {
+function SubMenuPanel({ item, onClose, open }: SubMenuPanelProps) {
   const location = useLocation();
   const { isSuperAdmin, user } = useAuthStore();
-  const [isOpen, setIsOpen] = useState(false);
-  const hasChildren = item.children && item.children.length > 0;
-  const Icon = item.icon as React.ComponentType<{ className?: string }>;
-  const isActive = item.path === location.pathname;
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Get user role
+  if (!item || !item.children) return null;
+
   const userRole = user?.role || (isSuperAdmin ? 'super_admin' : null);
 
-  // Check if menu item is accessible based on role
-  const isAccessible = () => {
-    // Super admin only check
-    if (item.superAdminOnly && !isSuperAdmin) {
-      return false;
+  const isAccessible = (menuItem: MenuItem) => {
+    if (menuItem.superAdminOnly && !isSuperAdmin) return false;
+    if (menuItem.allowedRoles && userRole) {
+      // Filter out 'member' role as it's not in the menu allowed roles
+      if (userRole === 'member') return false;
+      return menuItem.allowedRoles.includes(userRole as 'super_admin' | 'mahall' | 'survey' | 'institute');
     }
-    // Role-based access check
-    if (item.allowedRoles && userRole) {
-      return item.allowedRoles.includes(userRole);
-    }
-    // If no restrictions, allow access
     return true;
   };
 
-  // Hide menu items that user doesn't have access to
-  if (!isAccessible()) {
-    return null;
-  }
+  // Filter items based on search query
+  const filterItems = (items: MenuItem[]): MenuItem[] => {
+    if (!searchQuery.trim()) return items;
+    
+    return items.filter(child => {
+      const matchesSearch = child.label.toLowerCase().includes(searchQuery.toLowerCase());
+      const hasMatchingChildren = child.children?.some(subChild => 
+        subChild.label.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      return matchesSearch || hasMatchingChildren;
+    });
+  };
 
-  // Filter children based on access
-  const visibleChildren = item.children?.filter((child) => {
-    if (child.superAdminOnly && !isSuperAdmin) return false;
-    if (child.allowedRoles && userRole) {
-      return child.allowedRoles.includes(userRole);
-    }
-    return true;
-  });
+  // Group children by category or render flat
+  const renderSubMenu = (items: MenuItem[]) => {
+    const filteredItems = filterItems(items.filter(isAccessible));
+    
+    return filteredItems.map((child) => {
+      const Icon = child.icon as React.ComponentType<{ className?: string }>;
+      const isActive = child.path === location.pathname;
 
-  // Check if any child is active to auto-expand
-  useEffect(() => {
-    if (hasChildren) {
-      const isChildActive = (items: MenuItem[]): boolean => {
-        return items.some((child) => {
-          if (child.path === location.pathname) return true;
-          if (child.children) return isChildActive(child.children);
-          return false;
-        });
-      };
-      
-      if (isChildActive(item.children || [])) {
-        setIsOpen(true);
+      if (child.children && child.children.length > 0) {
+        // This is a section header with children
+        const visibleChildren = child.children.filter(isAccessible);
+        if (visibleChildren.length === 0) return null;
+
+        return (
+          <div key={child.id} className="mb-6">
+            <h3 className="px-4 mb-2 text-xs font-bold text-gray-500 dark:text-gray-500 uppercase tracking-wider">
+              {child.label}
+            </h3>
+            <div className="space-y-0.5">
+              {visibleChildren.map((subChild) => {
+                // Check if this subChild itself is accessible
+                if (!isAccessible(subChild)) return null;
+                
+                const SubIcon = subChild.icon as React.ComponentType<{ className?: string }>;
+                const isSubActive = subChild.path === location.pathname;
+
+                return (
+                  <Link
+                    key={subChild.id}
+                    to={subChild.path || '#'}
+                    onClick={onClose}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 text-sm transition-colors group',
+                      isSubActive
+                        ? 'text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
+                        : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/30'
+                    )}
+                  >
+                    <SubIcon className={cn('h-5 w-5', isSubActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400')} />
+                    <span>{subChild.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        );
       }
-    }
-  }, [location.pathname, item.children, hasChildren]);
 
-  const handleToggle = () => {
-    if (hasChildren) {
-      setIsOpen(!isOpen);
-    }
+      // Regular menu item
+      return (
+        <Link
+          key={child.id}
+          to={child.path || '#'}
+          onClick={onClose}
+          className={cn(
+            'flex items-center gap-3 px-4 py-3 text-sm transition-colors group',
+            isActive
+              ? 'text-primary-700 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
+              : 'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800/30'
+          )}
+        >
+          <Icon className={cn('h-5 w-5', isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400')} />
+          <span>{child.label}</span>
+        </Link>
+      );
+    });
   };
 
   return (
-    <li>
-      {hasChildren ? (
-        <>
-          <button
-            onClick={handleToggle}
-            className={cn(
-              'group w-full flex items-center justify-between py-2.5 text-sm font-medium rounded-lg transition-all duration-200',
-              'hover:bg-gray-50 dark:hover:bg-gray-800/50',
-              'text-gray-600 dark:text-gray-400',
-              // Base padding right is fixed, left is dynamic
-              'pr-4'
-            )}
-            style={{ paddingLeft: `${level * 1.25 + 1}rem` }}
-          >
-            <div className="flex items-center gap-3">
-              <Icon className="h-5 w-5 flex-shrink-0 transition-colors group-hover:text-primary-600 dark:group-hover:text-primary-400" />
-              <span className="truncate">{item.label}</span>
-            </div>
-            {isOpen ? (
-              <FiChevronDown className="h-4 w-4 flex-shrink-0" />
-            ) : (
-              <FiChevronRight className="h-4 w-4 flex-shrink-0" />
-            )}
-          </button>
-          {isOpen && visibleChildren && visibleChildren.length > 0 && (
-            <ul className="mt-1 space-y-1">
-              {visibleChildren.map((child) => (
-                <MenuItemComponent key={child.id} item={child} level={level + 1} />
-              ))}
-            </ul>
-          )}
-        </>
-      ) : (
-        <Link
-          to={item.path || '#'}
-          className={cn(
-            'group flex items-center gap-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 border-l-4',
-            // Base padding right is fixed, left is dynamic
-            'pr-4',
-            isActive
-              ? 'border-primary-600 bg-primary-50/50 text-primary-700 dark:bg-primary-900/10 dark:text-primary-400 dark:border-primary-400'
-              : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/50 dark:hover:text-gray-200'
-          )}
-          style={{ paddingLeft: `${level * 1.25 + 1}rem` }}
-        >
-          <Icon className={cn("h-5 w-5 flex-shrink-0 transition-colors", isActive ? "text-primary-600 dark:text-primary-400" : "group-hover:text-primary-600 dark:group-hover:text-primary-400")} />
-          <span className="truncate">{item.label}</span>
-        </Link>
+    <div
+      className={cn(
+        'fixed left-24 top-0 z-40 h-screen w-48 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800',
+        'transition-transform transition-opacity duration-200 ease-out will-change-transform',
+        open ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 pointer-events-none'
       )}
+    >
+      <div className="flex h-full flex-col">
+        {/* Search Bar */}
+        <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="relative">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search menu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:focus:ring-primary-600 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+            />
+          </div>
+        </div>
+
+        {/* Section Header */}
+        <div className="flex-shrink-0 px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            {item.label}
+          </h2>
+        </div>
+
+        {/* Submenu Items */}
+        <nav className="flex-1 overflow-y-auto py-4">
+          {renderSubMenu(item.children)}
+        </nav>
+      </div>
+    </div>
+  );
+}
+
+interface MenuItemComponentProps {
+  item: MenuItem;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+function MenuItemComponent({ item, isSelected, onClick }: MenuItemComponentProps) {
+  const location = useLocation();
+  const { isSuperAdmin, user } = useAuthStore();
+  const Icon = item.icon as React.ComponentType<{ className?: string }>;
+  const hasChildren = item.children && item.children.length > 0;
+
+  const userRole = user?.role || (isSuperAdmin ? 'super_admin' : null);
+
+  const isAccessible = () => {
+    if (item.superAdminOnly && !isSuperAdmin) return false;
+    if (item.allowedRoles && userRole) {
+      // Filter out 'member' role as it's not in the menu allowed roles
+      if (userRole === 'member') return false;
+      return item.allowedRoles.includes(userRole as 'super_admin' | 'mahall' | 'survey' | 'institute');
+    }
+    return true;
+  };
+
+  if (!isAccessible()) return null;
+
+  // Check if current path matches this item or its children
+  const isActive = item.path === location.pathname || 
+    (hasChildren && item.children?.some(child => 
+      child.path === location.pathname || 
+      child.children?.some(subChild => subChild.path === location.pathname)
+    ));
+
+  if (hasChildren) {
+    return (
+      <li>
+        <button
+          onClick={onClick}
+          className={cn(
+            'group w-full flex flex-col items-center justify-center py-3.5 px-2 text-xs transition-all duration-200 border-0 outline-none focus:outline-none',
+            isSelected || isActive
+              ? 'text-primary-700 dark:text-primary-400'
+              : 'text-gray-900 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white'
+          )}
+        >
+          <Icon className={cn(
+            'h-6 w-6 mb-1.5 transition-colors',
+            isSelected || isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'
+          )} />
+          <span className="text-center leading-tight">{item.label}</span>
+        </button>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Link
+        to={item.path || '#'}
+        className={cn(
+          'group flex flex-col items-center justify-center py-3.5 px-2 text-xs transition-all duration-200 border-0 outline-none focus:outline-none',
+          isActive
+            ? 'text-primary-700 dark:text-primary-400'
+            : 'text-gray-900 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white'
+        )}
+      >
+        <Icon className={cn(
+          'h-6 w-6 mb-1.5 transition-colors',
+          isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'
+        )} />
+        <span className="text-center leading-tight">{item.label}</span>
+      </Link>
     </li>
   );
 }
 
 export default function Sidebar() {
+  const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
+  const [renderedMenuItem, setRenderedMenuItem] = useState<MenuItem | null>(null);
+  const [isSubmenuPanelOpen, setIsSubmenuPanelOpen] = useState(false);
+  const location = useLocation();
+  const setSubmenuOpen = useLayoutStore((s) => s.setSubmenuOpen);
+
+  // Auto-select menu item based on current route
+  useEffect(() => {
+    const findActiveMenuItem = () => {
+      for (const item of menuItems) {
+        if (item.path === location.pathname) {
+          setSelectedMenuItem(null);
+          return;
+        }
+        if (item.children) {
+          for (const child of item.children) {
+            if (child.path === location.pathname) {
+              setSelectedMenuItem(item);
+              return;
+            }
+            if (child.children) {
+              for (const subChild of child.children) {
+                if (subChild.path === location.pathname) {
+                  setSelectedMenuItem(item);
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+    findActiveMenuItem();
+  }, [location.pathname]);
+
+  const handleMenuClick = (item: MenuItem) => {
+    if (item.children && item.children.length > 0) {
+      setSelectedMenuItem(selectedMenuItem?.id === item.id ? null : item);
+    }
+  };
+
+  const handleCloseSubMenu = () => {
+    setSelectedMenuItem(null);
+  };
+
+  useEffect(() => {
+    if (selectedMenuItem) {
+      setRenderedMenuItem(selectedMenuItem);
+      setIsSubmenuPanelOpen(true);
+    } else {
+      // Animate out, then unmount
+      setIsSubmenuPanelOpen(false);
+      const t = window.setTimeout(() => {
+        setRenderedMenuItem(null);
+      }, 200);
+      return () => window.clearTimeout(t);
+    }
+  }, [selectedMenuItem]);
+
+  useEffect(() => {
+    // Keep content shifted while panel is animating out
+    setSubmenuOpen(Boolean(renderedMenuItem));
+  }, [renderedMenuItem, setSubmenuOpen]);
+
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900">
-      <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex h-16 items-center px-6 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
-              K
-            </div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            Jamaah Hub
-            </h1>
+    <>
+      {/* Main Sidebar */}
+      <aside className="fixed left-0 top-0 z-50 h-screen w-24 border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex h-full flex-col">
+          {/* Logo */}
+          <div className="flex h-16 items-center justify-center border-b border-gray-200 dark:border-gray-800 px-2 flex-shrink-0">
+            <img 
+              src={LOGO_PATH} 
+              alt={BRAND_NAME}
+              className="h-10 w-10 object-contain"
+            />
+          </div>
+
+          {/* Menu */}
+          <nav className="flex-1 overflow-y-auto py-2 px-1">
+            <ul className="space-y-1">
+              {menuItems.map((item) => (
+                <MenuItemComponent 
+                  key={item.id} 
+                  item={item} 
+                  isSelected={selectedMenuItem?.id === item.id}
+                  onClick={() => handleMenuClick(item)}
+                />
+              ))}
+            </ul>
+          </nav>
+
+          {/* Status Indicator */}
+          <div className="border-t border-gray-200 p-3 dark:border-gray-800 flex justify-center flex-shrink-0">
+            <span className="h-2.5 w-2.5 rounded-full bg-green-500 shadow-sm"></span>
           </div>
         </div>
+      </aside>
 
-        {/* Menu */}
-        <nav className="flex-1 overflow-y-auto p-4">
-          <ul className="space-y-1">
-            {menuItems.map((item) => (
-              <MenuItemComponent key={item.id} item={item} />
-            ))}
-          </ul>
-        </nav>
-
-        {/* Version */}
-        <div className="border-t border-gray-100 p-4 dark:border-gray-800">
-          <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 font-medium">
-            <span>Version 3.1.0</span>
-            <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-          </div>
-        </div>
-      </div>
-    </aside>
+      {/* Submenu Panel */}
+      {renderedMenuItem && (
+        <SubMenuPanel item={renderedMenuItem} onClose={handleCloseSubMenu} open={isSubmenuPanelOpen} />
+      )}
+    </>
   );
 }
 

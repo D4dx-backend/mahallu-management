@@ -37,7 +37,17 @@ export const authMiddleware = async (
 
     req.user = user;
     req.isSuperAdmin = user.isSuperAdmin;
-    req.tenantId = user.tenantId?.toString();
+    
+    // Check for x-tenant-id header (used when super admin views as tenant)
+    const headerTenantId = req.headers['x-tenant-id'] as string;
+    
+    if (user.isSuperAdmin && headerTenantId) {
+      // Super admin is viewing as a specific tenant
+      req.tenantId = headerTenantId;
+    } else {
+      // Regular user or super admin not viewing as tenant
+      req.tenantId = user.tenantId?.toString();
+    }
 
     next();
   } catch (error) {
