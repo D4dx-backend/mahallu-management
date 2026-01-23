@@ -8,7 +8,6 @@ import StatCard from '@/components/ui/StatCard';
 import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn } from '@/types';
 import { Family } from '@/types';
 import { ROUTES } from '@/constants/routes';
@@ -105,27 +104,40 @@ export default function UnapprovedFamiliesList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'View',
-            icon: <FiEye />,
-            onClick: () => navigate(ROUTES.FAMILIES.DETAIL(row.id)),
-          },
-          {
-            label: 'Edit',
-            icon: <FiEdit2 />,
-            onClick: () => navigate(ROUTES.FAMILIES.EDIT(row.id)),
-          },
-          {
-            label: 'Approve',
-            icon: <FiCheck />,
-            onClick: () => handleApprove(row.id),
-            variant: 'default',
-          },
-        ];
-        return <ActionsMenu items={actionItems} />;
-      },
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.FAMILIES.DETAIL(row.id));
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.FAMILIES.EDIT(row.id));
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="Edit"
+          >
+            <FiEdit2 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleApprove(row.id);
+            }}
+            className="p-1.5 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors"
+            title="Approve"
+          >
+            <FiCheck className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -180,7 +192,13 @@ export default function UnapprovedFamiliesList() {
             </Button>
           </div>
         ) : (
-          <Table columns={columns} data={families} emptyMessage="No unapproved families found" showExport={false} />
+          <Table
+            columns={columns}
+            data={families}
+            emptyMessage="No unapproved families found"
+            showExport={false}
+            onRowClick={(row) => navigate(ROUTES.FAMILIES.DETAIL(row.id))}
+          />
         )}
       </Card>
     </div>

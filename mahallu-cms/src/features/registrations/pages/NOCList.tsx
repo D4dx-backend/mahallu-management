@@ -1,22 +1,77 @@
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FiEye, FiEdit2, FiX, FiFileText, FiClock, FiCheckCircle } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiX, FiFileText, FiClock, FiCheckCircle, FiDownload } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 import StatCard from '@/components/ui/StatCard';
 import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { registrationService, NOC } from '@/services/registrationService';
+import { memberService } from '@/services/memberService';
+import { Member } from '@/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/format';
 import { ROUTES } from '@/constants/routes';
 import { exportToCSV, exportToJSON, exportToPDF } from '@/utils/exportUtils';
+import { downloadNocPdf } from '@/utils/nocPdf';
+
+const DEFAULT_NOC_DESCRIPTION = `
+<p>To Whom It May Concern,</p>
+<p><strong>Subject: No Objection Certificate for Nikah</strong></p>
+<p>
+  This is to certify that <strong>Mr. [Groom's Full Name]</strong>, son of Mr. [Groom's Father's Name], and
+  <strong>Ms. [Bride's Full Name]</strong>, daughter of Mr. [Bride's Father's Name], have approached our Mahall
+  for the purpose of solemnizing their marriage through the Islamic Nikah ceremony.
+</p>
+<p>
+  We, the undersigned members of the Mahall committee, hereby declare that we have no objections to the
+  aforementioned union, and we consider it in compliance with Islamic customs and teachings. We have
+  conducted the necessary due diligence, reviewed the documentation, and ensured that both parties meet
+  the requirements for marriage in accordance with Islamic law.
+</p>
+<p>
+  Furthermore, we have performed all required religious and legal checks and verifications, and it is our
+  firm belief that the union between <strong>Mr. [Groom's Full Name]</strong> and <strong>Ms. [Bride's Full Name]</strong>
+  is permissible under Islamic law.
+</p>
+<p>The current marital status of the parties is as follows:</p>
+<ul>
+  <li><strong>Mr. [Groom's Full Name]</strong> - [Current Marital Status] - [Number of Marriages]</li>
+  <li><strong>Ms. [Bride's Full Name]</strong> - [Current Marital Status] - [Number of Marriages]</li>
+</ul>
+<p>
+  This No Objection Certificate is issued to facilitate the Nikah ceremony and to confirm that the Mahall
+  does not raise any objections to this marriage. We wish the couple a blessed and harmonious marital life.
+</p>
+<p>
+  For any further inquiries or information, please feel free to contact our Mahall office at
+  [Contact Information].
+</p>
+<p>Yours faithfully,</p>
+<p>[Signature of the Mahall Committee Member]</p>
+<p>[Printed Name of the Mahall Committee Member]</p>
+`.trim();
+
+const createNocSchema = z.object({
+  applicantId: z.string().optional(),
+  applicantName: z.string().min(1, 'Applicant name is required'),
+  applicantPhone: z.string().optional(),
+  purposeTitle: z.string().min(1, 'Purpose title is required'),
+  purposeDescription: z.string().min(1, 'Purpose description is required'),
+  type: z.enum(['common', 'nikah']),
+});
+
+type CreateNocFormData = z.infer<typeof createNocSchema>;
 
 export default function NOCList() {
   const navigate = useNavigate();
@@ -39,12 +94,64 @@ export default function NOCList() {
   const [itemsPerPage] = useState(10);
   const [pagination, setPagination] = useState<PaginationType | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const debouncedSearch = useDebounce(searchQuery, 500);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors: createErrors, isSubmitting: isCreating },
+  } = useForm<CreateNocFormData>({
+    resolver: zodResolver(createNocSchema),
+    defaultValues: {
+      type: 'common',
+      purposeDescription: DEFAULT_NOC_DESCRIPTION,
+    },
+  });
+
+  const selectedApplicantId = watch('applicantId');
+  const purposeDescription = watch('purposeDescription');
+
+  useEffect(() => {
+    if (isNikahNOC) {
+      setValue('type', 'nikah');
+      setTypeFilter('nikah');
+    } else if (isCommonNOC) {
+      setValue('type', 'common');
+      setTypeFilter('common');
+    }
+  }, [isNikahNOC, isCommonNOC, setValue]);
 
   useEffect(() => {
     fetchNOCs();
   }, [debouncedSearch, typeFilter, statusFilter, currentPage]);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const result = await memberService.getAll({ limit: 1000 });
+        setMembers(result.data || []);
+      } catch (err) {
+        console.error('Error fetching members:', err);
+        setMembers([]);
+      }
+    };
+    fetchMembers();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedApplicantId) return;
+    const selectedMember = members.find((m) => m.id === selectedApplicantId);
+    if (!selectedMember) return;
+    setValue('applicantName', selectedMember.name);
+    setValue('applicantPhone', selectedMember.phone || '');
+  }, [selectedApplicantId, members, setValue]);
 
   const fetchNOCs = async () => {
     try {
@@ -73,6 +180,29 @@ export default function NOCList() {
       console.error('Error fetching NOCs:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateNoc = async (data: CreateNocFormData) => {
+    try {
+      setCreateError(null);
+      await registrationService.createNOC({
+        applicantId: data.applicantId,
+        applicantName: data.applicantName,
+        applicantPhone: data.applicantPhone,
+        purposeTitle: data.purposeTitle,
+        purposeDescription: data.purposeDescription,
+        type: data.type,
+      });
+      reset({
+        type: data.type,
+        purposeDescription: DEFAULT_NOC_DESCRIPTION,
+      });
+      setShowCreate(false);
+      await fetchNOCs();
+    } catch (err: any) {
+      setCreateError(err.response?.data?.message || 'Failed to create NOC. Please try again.');
+      console.error('Error creating NOC:', err);
     }
   };
 
@@ -118,7 +248,11 @@ export default function NOCList() {
   const columns: TableColumn<NOC>[] = [
     { key: 'id', label: 'No.', render: (_, __, index) => index + 1 },
     { key: 'applicantName', label: 'Applicant', sortable: true },
-    { key: 'purpose', label: 'Purpose' },
+    {
+      key: 'purposeTitle',
+      label: 'Purpose',
+      render: (value, row) => value || row.purpose || '-',
+    },
     {
       key: 'type',
       label: 'Type',
@@ -152,21 +286,40 @@ export default function NOCList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'View',
-            icon: <FiEye />,
-            onClick: () => navigate(`/registrations/noc/${row.id}`),
-          },
-          {
-            label: 'Edit',
-            icon: <FiEdit2 />,
-            onClick: () => navigate(`/registrations/noc/${row.id}/edit`),
-          },
-        ];
-        return <ActionsMenu items={actionItems} />;
-      },
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/registrations/noc/${row.id}`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadNocPdf(row, `noc-${row.applicantName}`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="Download"
+          >
+            <FiDownload className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/registrations/noc/${row.id}/edit`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="Edit"
+          >
+            <FiEdit2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -216,6 +369,85 @@ export default function NOCList() {
       </div>
 
       <Card>
+        <div className="mb-6">
+          <Button variant="outline" onClick={() => setShowCreate(!showCreate)}>
+            {showCreate ? 'Close NOC Form' : '+ Create NOC'}
+          </Button>
+        </div>
+
+        {showCreate && (
+          <div className="mb-8 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
+            <form onSubmit={handleSubmit(handleCreateNoc)} className="space-y-4">
+              {createError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm dark:bg-red-900 dark:border-red-700 dark:text-red-200">
+                  {createError}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Select
+                  label="Applicant"
+                  options={[
+                    { value: '', label: 'Select applicant...' },
+                    ...members.map((member) => ({
+                      value: member.id,
+                      label: `${member.name} (${member.familyName})`,
+                    })),
+                  ]}
+                  {...register('applicantId')}
+                  className="md:col-span-2"
+                />
+                <Input
+                  label="Applicant Name"
+                  {...register('applicantName')}
+                  error={createErrors.applicantName?.message}
+                  required
+                  placeholder="Applicant Name"
+                />
+                <Input
+                  label="Applicant Phone"
+                  type="tel"
+                  {...register('applicantPhone')}
+                  placeholder="Phone Number"
+                />
+                <Input
+                  label="Purpose Title"
+                  {...register('purposeTitle')}
+                  error={createErrors.purposeTitle?.message}
+                  required
+                  placeholder="Purpose Title"
+                  className="md:col-span-2"
+                />
+                <Select
+                  label="NOC Type"
+                  options={[
+                    { value: 'common', label: 'Common' },
+                    { value: 'nikah', label: 'Nikah' },
+                  ]}
+                  {...register('type')}
+                  error={createErrors.type?.message}
+                  required
+                />
+                <div className="md:col-span-2">
+                  <RichTextEditor
+                    label="Purpose Description"
+                    value={purposeDescription || DEFAULT_NOC_DESCRIPTION}
+                    onChange={(val) => setValue('purposeDescription', val)}
+                    error={createErrors.purposeDescription?.message}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" isLoading={isCreating}>
+                  Create NOC
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
+
         <TableToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -226,11 +458,9 @@ export default function NOCList() {
           onExport={handleExport}
           isExporting={isExporting}
           actionButtons={
-            <Link to="/registrations/noc/create">
-              <Button size="md">
-                + New NOC
-              </Button>
-            </Link>
+            <Button size="md" onClick={() => setShowCreate(true)}>
+              + New NOC
+            </Button>
           }
         />
 
@@ -282,7 +512,13 @@ export default function NOCList() {
             </Button>
           </div>
         ) : (
-          <Table columns={columns} data={nocs} emptyMessage="No NOCs found" showExport={false} />
+          <Table
+            columns={columns}
+            data={nocs}
+            emptyMessage="No NOCs found"
+            showExport={false}
+            onRowClick={(row) => navigate(`/registrations/noc/${row.id}`)}
+          />
         )}
 
         {/* Pagination */}

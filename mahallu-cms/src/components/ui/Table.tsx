@@ -125,7 +125,7 @@ function Table<T extends Record<string, any>>({
           </Button>
         </div>
       )}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="w-full border-collapse">
         <thead className="bg-gray-50/50 dark:bg-gray-800/50">
           <tr className="border-b border-gray-200 dark:border-gray-700">

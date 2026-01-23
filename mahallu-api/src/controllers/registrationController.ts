@@ -156,6 +156,14 @@ export const createDeathRegistration = async (req: AuthRequest, res: Response) =
 
     const registration = new DeathRegistration(registrationData);
     await registration.save();
+
+    if (registration.deceasedId) {
+      const Member = (await import('../models/Member')).default;
+      await Member.findByIdAndUpdate(registration.deceasedId, {
+        isDead: true,
+        status: 'inactive',
+      });
+    }
     res.status(201).json({ success: true, data: registration });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -221,9 +229,23 @@ export const getNOCById = async (req: AuthRequest, res: Response) => {
 
 export const createNOC = async (req: AuthRequest, res: Response) => {
   try {
+    const { purposeTitle, purposeDescription, purpose } = req.body;
+    if (!purposeTitle && !purpose) {
+      return res.status(400).json({ success: false, message: 'Purpose title is required' });
+    }
+    if (!purposeDescription && !purpose) {
+      return res.status(400).json({ success: false, message: 'Purpose description is required' });
+    }
     const nocData = {
       ...req.body,
       tenantId: req.tenantId || req.body.tenantId,
+      purposeTitle: purposeTitle || purpose,
+      purposeDescription: purposeDescription || purpose,
+      purpose: purpose || purposeTitle || purposeDescription,
+      // Set status to approved for Mahallu admin created NOCs
+      status: req.body.status || 'approved',
+      // Set issued date to current date if not provided
+      issuedDate: req.body.issuedDate || new Date(),
     };
 
     if (!nocData.tenantId && !req.isSuperAdmin) {
@@ -244,11 +266,11 @@ export const createNOC = async (req: AuthRequest, res: Response) => {
 export const updateNOC = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { status, issuedDate, expiryDate, remarks } = req.body;
+    const { status, issuedDate, expiryDate, remarks, purposeTitle, purposeDescription, purpose } = req.body;
     
     const noc = await NOC.findByIdAndUpdate(
       id,
-      { status, issuedDate, expiryDate, remarks },
+      { status, issuedDate, expiryDate, remarks, purposeTitle, purposeDescription, purpose },
       { new: true, runValidators: true }
     )
       .populate('applicantId', 'name')

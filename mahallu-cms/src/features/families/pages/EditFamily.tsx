@@ -15,6 +15,7 @@ import { familyService } from '@/services/familyService';
 import { tenantService } from '@/services/tenantService';
 import { useAuthStore } from '@/store/authStore';
 import { Family } from '@/types';
+import { getTenantId } from '@/utils/tenantHelper';
 
 const familySchema = z.object({
   mahallId: z.string().optional(),
@@ -46,20 +47,21 @@ export default function EditFamily() {
   const [grades, setGrades] = useState<Array<{ name: string; amount: number }>>([]);
   const [areaOptions, setAreaOptions] = useState<string[]>([]);
 
-  const tenantId = currentTenantId || user?.tenantId;
+  const tenantId = getTenantId(user, currentTenantId);
 
   useEffect(() => {
-    const fetchGrades = async () => {
+    const fetchSettings = async () => {
       if (tenantId) {
         try {
           const tenant = await tenantService.getById(tenantId);
           setGrades(tenant.settings?.varisangyaGrades || []);
+          setAreaOptions(tenant.settings?.areaOptions || ['Area A', 'Area B', 'Area C', 'Area D']);
         } catch (err) {
-          console.error('Error fetching grades:', err);
+          console.error('Error fetching tenant settings:', err);
         }
       }
     };
-    fetchGrades();
+    fetchSettings();
   }, [tenantId]);
 
   const {

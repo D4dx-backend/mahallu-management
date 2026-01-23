@@ -37,6 +37,9 @@ export const getTenantById = async (req: AuthRequest, res: Response) => {
     if (!tenant) {
       return res.status(404).json({ success: false, message: 'Tenant not found' });
     }
+    if (!req.isSuperAdmin && req.tenantId?.toString() !== tenant._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
     res.json({ success: true, data: tenant });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -70,6 +73,9 @@ export const createTenant = async (req: AuthRequest, res: Response) => {
 
 export const updateTenant = async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.isSuperAdmin && req.tenantId?.toString() !== req.params.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
     // Handle nested settings update properly
     const updateData = { ...req.body };
     
@@ -124,6 +130,9 @@ export const deleteTenant = async (req: AuthRequest, res: Response) => {
 export const getTenantStats = async (req: AuthRequest, res: Response) => {
   try {
     const tenantId = req.params.id;
+    if (!req.isSuperAdmin && req.tenantId?.toString() !== tenantId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
     
     // Get statistics for the tenant
     const [users, families, members] = await Promise.all([

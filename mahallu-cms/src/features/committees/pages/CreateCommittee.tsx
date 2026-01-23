@@ -28,6 +28,7 @@ export default function CreateCommittee() {
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
+  const [memberSearch, setMemberSearch] = useState('');
 
   const {
     register,
@@ -70,6 +71,13 @@ export default function CreateCommittee() {
       setValue('members', [...current, memberId]);
     }
   };
+
+  const filteredMembers = memberSearch
+    ? members.filter((member) => {
+        const query = memberSearch.toLowerCase();
+        return member.name.toLowerCase().includes(query) || member.familyName.toLowerCase().includes(query);
+      })
+    : members;
 
   const onSubmit = async (data: CommitteeFormData) => {
     try {
@@ -145,11 +153,19 @@ export default function CreateCommittee() {
               <p className="text-sm text-gray-500">Loading members...</p>
             ) : (
               <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 max-h-64 overflow-y-auto">
-                {members.length === 0 ? (
+                <div className="mb-3">
+                  <Input
+                    label="Search Members"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    placeholder="Search by member or family name"
+                  />
+                </div>
+                {filteredMembers.length === 0 ? (
                   <p className="text-sm text-gray-500">No members available</p>
                 ) : (
                   <div className="space-y-2">
-                    {members.map((member) => (
+                    {filteredMembers.map((member) => (
                       <label
                         key={member.id}
                         className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded"

@@ -14,6 +14,7 @@ import { ROUTES } from '@/constants/routes';
 import { familyService } from '@/services/familyService';
 import { tenantService } from '@/services/tenantService';
 import { useAuthStore } from '@/store/authStore';
+import { getTenantId } from '@/utils/tenantHelper';
 
 const familySchema = z.object({
   varisangyaGrade: z.string().optional(),
@@ -41,7 +42,7 @@ export default function CreateFamily() {
   const [grades, setGrades] = useState<Array<{ name: string; amount: number }>>([]);
   const [areaOptions, setAreaOptions] = useState<string[]>([]);
 
-  const tenantId = currentTenantId || user?.tenantId;
+  const tenantId = getTenantId(user, currentTenantId);
 
   useEffect(() => {
     const fetchTenantSettings = async () => {

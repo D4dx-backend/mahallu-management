@@ -129,7 +129,6 @@ export const menuItems: MenuItem[] = [
         children: [
           { id: 'common-noc', label: 'Common NOC', icon: FiFileText, path: '/registrations/noc/common', allowedRoles: ['super_admin', 'mahall'] },
           { id: 'nikah-noc', label: 'Nikah NOC', icon: FiFilePlus, path: '/registrations/noc/nikah', allowedRoles: ['super_admin', 'mahall'] },
-          { id: 'create-noc', label: 'Create NOC', icon: FiPlusSquare, path: '/registrations/noc/create', allowedRoles: ['super_admin', 'mahall'] },
         ],
       },
     ],

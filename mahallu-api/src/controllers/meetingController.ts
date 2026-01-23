@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Meeting from '../models/Meeting';
 import Committee from '../models/Committee';
+import { sendWhatsAppMessage } from '../services/dxingService';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
 
@@ -55,7 +56,7 @@ export const createMeeting = async (req: AuthRequest, res: Response) => {
     const { committeeId, attendance, ...meetingData } = req.body;
 
     // Get committee to calculate attendance
-    const committee = await Committee.findById(committeeId);
+    const committee = await Committee.findById(committeeId).populate('members', 'name phone familyName');
     if (!committee) {
       return res.status(404).json({ success: false, message: 'Committee not found' });
     }
@@ -84,6 +85,30 @@ export const createMeeting = async (req: AuthRequest, res: Response) => {
     const populated = await Meeting.findById(meeting._id)
       .populate('committeeId', 'name')
       .populate('attendance', 'name');
+
+    const memberList = (committee.members as any[])
+      .map((member) => `${member.name}${member.familyName ? ` (${member.familyName})` : ''}`)
+      .join(', ');
+
+    const meetingMessage = [
+      '📅 Committee Meeting اطلاع',
+      '',
+      `Committee: ${committee.name}`,
+      `Subject: ${meeting.title}`,
+      `Date & Time: ${new Date(meeting.meetingDate).toLocaleString()}`,
+      meeting.agenda ? `Agenda: ${meeting.agenda}` : null,
+      memberList ? `Members: ${memberList}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const memberPhones = (committee.members as any[])
+      .map((member) => member.phone)
+      .filter((phone) => typeof phone === 'string' && phone.length >= 10);
+
+    await Promise.allSettled(
+      memberPhones.map((phone) => sendWhatsAppMessage(phone, meetingMessage))
+    );
     res.status(201).json({ success: true, data: populated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

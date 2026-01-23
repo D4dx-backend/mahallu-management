@@ -8,6 +8,7 @@ export interface INikahRegistration extends Document {
   brideName: string;
   brideAge?: number;
   brideId?: mongoose.Types.ObjectId; // Member ID
+  mahallMemberType?: 'groom' | 'bride';
   nikahDate: Date;
   mahallId?: string;
   waliName?: string;
@@ -44,7 +45,9 @@ export interface INOC extends Document {
   applicantName: string;
   applicantId?: mongoose.Types.ObjectId; // Member ID
   applicantPhone?: string;
-  purpose: string;
+  purposeTitle?: string;
+  purposeDescription?: string;
+  purpose?: string;
   type: 'common' | 'nikah';
   nikahRegistrationId?: mongoose.Types.ObjectId; // For nikah NOC
   status: 'pending' | 'approved' | 'rejected';
@@ -69,6 +72,10 @@ const NikahRegistrationSchema = new Schema<INikahRegistration>(
     brideName: { type: String, required: true, trim: true },
     brideAge: Number,
     brideId: { type: Schema.Types.ObjectId, ref: 'Member' },
+    mahallMemberType: {
+      type: String,
+      enum: ['groom', 'bride'],
+    },
     nikahDate: { type: Date, required: true },
     mahallId: String,
     waliName: String,
@@ -125,7 +132,9 @@ const NOCSchema = new Schema<INOC>(
     applicantName: { type: String, required: true, trim: true },
     applicantId: { type: Schema.Types.ObjectId, ref: 'Member' },
     applicantPhone: String,
-    purpose: { type: String, required: true, trim: true },
+    purposeTitle: { type: String, trim: true },
+    purposeDescription: { type: String },
+    purpose: { type: String, trim: true },
     type: {
       type: String,
       enum: ['common', 'nikah'],
@@ -135,7 +144,7 @@ const NOCSchema = new Schema<INOC>(
     status: {
       type: String,
       enum: ['pending', 'approved', 'rejected'],
-      default: 'pending',
+      default: 'approved',
     },
     issuedDate: Date,
     expiryDate: Date,

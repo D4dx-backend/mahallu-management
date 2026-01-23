@@ -13,17 +13,6 @@ export interface User {
   lastLogin?: string;
   permissions?: Permission[];
   isSuperAdmin?: boolean;
-  tenant?: {
-    id: string;
-    name: string;
-    code: string;
-  };
-  member?: {
-    id: string;
-    name: string;
-    phone: string;
-    familyName: string;
-  };
 }
 
 export interface Permission {
@@ -70,6 +59,10 @@ export interface Member {
   healthStatus?: string;
   phone?: string;
   education?: string;
+  maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed';
+  marriageCount?: number;
+  isOrphan?: boolean;
+  isDead?: boolean;
   createdAt: string;
 }
 

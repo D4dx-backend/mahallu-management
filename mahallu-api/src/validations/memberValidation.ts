@@ -36,6 +36,16 @@ export const createMemberValidation = [
     .matches(/^[0-9]{10}$/)
     .withMessage('Phone number must be exactly 10 digits'),
   body('education').optional().trim(),
+  body('maritalStatus')
+    .optional()
+    .isIn(['single', 'married', 'divorced', 'widowed'])
+    .withMessage('Invalid marital status'),
+  body('marriageCount')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Number of marriages must be a positive integer'),
+  body('isOrphan').optional().isBoolean().withMessage('isOrphan must be a boolean'),
+  body('isDead').optional().isBoolean().withMessage('isDead must be a boolean'),
 ];
 
 export const updateMemberValidation = [
@@ -61,6 +71,16 @@ export const updateMemberValidation = [
     .optional()
     .isIn(['A +ve', 'A -ve', 'B +ve', 'B -ve', 'AB +ve', 'AB -ve', 'O +ve', 'O -ve'])
     .withMessage('Invalid blood group'),
+  body('maritalStatus')
+    .optional()
+    .isIn(['single', 'married', 'divorced', 'widowed'])
+    .withMessage('Invalid marital status'),
+  body('marriageCount')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Number of marriages must be a positive integer'),
+  body('isOrphan').optional().isBoolean().withMessage('isOrphan must be a boolean'),
+  body('isDead').optional().isBoolean().withMessage('isDead must be a boolean'),
 ];
 
 export const getMemberValidation = [

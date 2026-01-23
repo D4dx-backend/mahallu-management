@@ -9,6 +9,7 @@ export interface NikahRegistration {
   brideName: string;
   brideAge?: number;
   brideId?: string;
+  mahallMemberType?: 'groom' | 'bride';
   nikahDate: string;
   mahallId?: string;
   waliName?: string;
@@ -45,7 +46,9 @@ export interface NOC {
   applicantName: string;
   applicantId?: string;
   applicantPhone?: string;
-  purpose: string;
+  purposeTitle?: string;
+  purposeDescription?: string;
+  purpose?: string;
   type: 'common' | 'nikah';
   nikahRegistrationId?: string;
   status?: 'pending' | 'approved' | 'rejected';

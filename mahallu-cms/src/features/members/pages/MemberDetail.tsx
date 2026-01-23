@@ -146,6 +146,30 @@ export default function MemberDetail() {
                 <p className="text-gray-900 dark:text-gray-100">{member.bloodGroup}</p>
               </div>
             )}
+            {member.maritalStatus && (
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Marital Status</span>
+                <p className="text-gray-900 dark:text-gray-100 capitalize">{member.maritalStatus}</p>
+              </div>
+            )}
+            {typeof member.marriageCount === 'number' && (
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Number of Marriages</span>
+                <p className="text-gray-900 dark:text-gray-100">{member.marriageCount}</p>
+              </div>
+            )}
+            {member.isOrphan && (
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Orphan</span>
+                <p className="text-gray-900 dark:text-gray-100">Yes</p>
+              </div>
+            )}
+            {member.isDead && (
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Deceased</span>
+                <p className="text-gray-900 dark:text-gray-100">Yes</p>
+              </div>
+            )}
           </div>
         </Card>
 

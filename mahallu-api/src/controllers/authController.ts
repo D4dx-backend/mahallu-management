@@ -68,10 +68,8 @@ export const login = async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
 
-    const userResponse = await User.findById(user._id)
-      .select('-password')
-      .populate('tenantId', 'name code')
-      .populate('memberId', 'name phone familyName');
+    // Fetch user without populating to keep tenantId as string
+    const userResponse = await User.findById(user._id).select('-password');
 
     res.json({
       success: true,
@@ -87,10 +85,8 @@ export const login = async (req: Request, res: Response) => {
 
 export const getCurrentUser = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findById(req.user?._id)
-      .select('-password')
-      .populate('tenantId', 'name code')
-      .populate('memberId', 'name phone familyName');
+    // Fetch user without populating to keep tenantId/memberId as strings
+    const user = await User.findById(req.user?._id).select('-password');
     
     res.json({ success: true, data: user });
   } catch (error: any) {
@@ -409,10 +405,8 @@ export const verifyOTP = async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
 
-    const userResponse = await User.findById(user._id)
-      .select('-password')
-      .populate('tenantId', 'name code')
-      .populate('memberId', 'name phone familyName');
+    // Fetch user without populating to keep tenantId as string
+    const userResponse = await User.findById(user._id).select('-password');
 
     res.json({
       success: true,

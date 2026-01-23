@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,13 +9,55 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 import { ROUTES } from '@/constants/routes';
 import { registrationService } from '@/services/registrationService';
+import { memberService } from '@/services/memberService';
+import { Member } from '@/types';
+
+const DEFAULT_NOC_DESCRIPTION = `
+<p>To Whom It May Concern,</p>
+<p><strong>Subject: No Objection Certificate for Nikah</strong></p>
+<p>
+  This is to certify that <strong>Mr. [Groom's Full Name]</strong>, son of Mr. [Groom's Father's Name], and
+  <strong>Ms. [Bride's Full Name]</strong>, daughter of Mr. [Bride's Father's Name], have approached our Mahall
+  for the purpose of solemnizing their marriage through the Islamic Nikah ceremony.
+</p>
+<p>
+  We, the undersigned members of the Mahall committee, hereby declare that we have no objections to the
+  aforementioned union, and we consider it in compliance with Islamic customs and teachings. We have
+  conducted the necessary due diligence, reviewed the documentation, and ensured that both parties meet
+  the requirements for marriage in accordance with Islamic law.
+</p>
+<p>
+  Furthermore, we have performed all required religious and legal checks and verifications, and it is our
+  firm belief that the union between <strong>Mr. [Groom's Full Name]</strong> and <strong>Ms. [Bride's Full Name]</strong>
+  is permissible under Islamic law.
+</p>
+<p>The current marital status of the parties is as follows:</p>
+<ul>
+  <li><strong>Mr. [Groom's Full Name]</strong> - [Current Marital Status] - [Number of Marriages]</li>
+  <li><strong>Ms. [Bride's Full Name]</strong> - [Current Marital Status] - [Number of Marriages]</li>
+</ul>
+<p>
+  This No Objection Certificate is issued to facilitate the Nikah ceremony and to confirm that the Mahall
+  does not raise any objections to this marriage. We wish the couple a blessed and harmonious marital life.
+</p>
+<p>
+  For any further inquiries or information, please feel free to contact our Mahall office at
+  [Contact Information].
+</p>
+<p>Yours faithfully,</p>
+<p>[Signature of the Mahall Committee Member]</p>
+<p>[Printed Name of the Mahall Committee Member]</p>
+`.trim();
 
 const nocSchema = z.object({
+  applicantId: z.string().optional(),
   applicantName: z.string().min(1, 'Applicant name is required'),
   applicantPhone: z.string().optional(),
-  purpose: z.string().min(1, 'Purpose is required'),
+  purposeTitle: z.string().min(1, 'Purpose title is required'),
+  purposeDescription: z.string().min(1, 'Purpose description is required'),
   type: z.enum(['common', 'nikah']),
 });
 
@@ -26,24 +68,54 @@ export default function CreateNOC() {
   const [searchParams] = useSearchParams();
   const nocType = searchParams.get('type') || 'common';
   const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<NOCFormData>({
     resolver: zodResolver(nocSchema),
     defaultValues: {
       type: nocType as 'common' | 'nikah',
+      purposeDescription: DEFAULT_NOC_DESCRIPTION,
     },
   });
+
+  const selectedApplicantId = watch('applicantId');
+  const purposeDescription = watch('purposeDescription');
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const result = await memberService.getAll({ limit: 1000 });
+        setMembers(result.data || []);
+      } catch (err) {
+        console.error('Error fetching members:', err);
+        setMembers([]);
+      }
+    };
+    fetchMembers();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedApplicantId) return;
+    const selectedMember = members.find((m) => m.id === selectedApplicantId);
+    if (!selectedMember) return;
+    setValue('applicantName', selectedMember.name);
+    setValue('applicantPhone', selectedMember.phone || '');
+  }, [selectedApplicantId, members, setValue]);
 
   const onSubmit = async (data: NOCFormData) => {
     try {
       setError(null);
       await registrationService.createNOC({
+        applicantId: data.applicantId,
         applicantName: data.applicantName,
         applicantPhone: data.applicantPhone,
-        purpose: data.purpose,
+        purposeTitle: data.purposeTitle,
+        purposeDescription: data.purposeDescription,
         type: data.type,
       });
       navigate(ROUTES.REGISTRATIONS.NOC.COMMON);
@@ -78,6 +150,18 @@ export default function CreateNOC() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Select
+              label="Applicant"
+              options={[
+                { value: '', label: 'Select applicant...' },
+                ...members.map((member) => ({
+                  value: member.id,
+                  label: `${member.name} (${member.familyName})`,
+                })),
+              ]}
+              {...register('applicantId')}
+              className="md:col-span-2"
+            />
             <Input
               label="Applicant Name"
               {...register('applicantName')}
@@ -91,6 +175,14 @@ export default function CreateNOC() {
               {...register('applicantPhone')}
               placeholder="Phone Number"
             />
+            <Input
+              label="Purpose Title"
+              {...register('purposeTitle')}
+              error={errors.purposeTitle?.message}
+              required
+              placeholder="Purpose Title"
+              className="md:col-span-2"
+            />
             <Select
               label="NOC Type"
               options={[
@@ -101,14 +193,14 @@ export default function CreateNOC() {
               error={errors.type?.message}
               required
             />
-            <Input
-              label="Purpose"
-              {...register('purpose')}
-              error={errors.purpose?.message}
-              required
-              placeholder="Purpose of NOC"
-              className="md:col-span-2"
-            />
+            <div className="md:col-span-2">
+              <RichTextEditor
+                label="Purpose Description"
+                value={purposeDescription || DEFAULT_NOC_DESCRIPTION}
+                onChange={(val) => setValue('purposeDescription', val)}
+                error={errors.purposeDescription?.message}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">

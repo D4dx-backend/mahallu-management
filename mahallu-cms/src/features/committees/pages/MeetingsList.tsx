@@ -11,7 +11,6 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { Meeting, Committee } from '@/types';
 import { meetingService } from '@/services/meetingService';
@@ -163,25 +162,31 @@ export default function MeetingsList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'View',
-            icon: <FiEye />,
-            onClick: () => navigate(`/meetings/${row.id}`),
-          },
-          {
-            label: 'Delete',
-            icon: <FiTrash2 />,
-            onClick: () => {
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/committees/meetings/${row.id}`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               setSelectedMeeting(row);
               setShowDeleteModal(true);
-            },
-            variant: 'danger',
-          },
-        ];
-        return <ActionsMenu items={actionItems} />;
-      },
+            }}
+            className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+            title="Delete"
+          >
+            <FiTrash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -228,7 +233,7 @@ export default function MeetingsList() {
           onExport={handleExport}
           isExporting={isExporting}
           actionButtons={
-            <Link to="/meetings/create">
+            <Link to="/committees/meetings/create">
               <Button size="md">
                 + New Meeting
               </Button>
@@ -269,7 +274,13 @@ export default function MeetingsList() {
             </Button>
           </div>
         ) : (
-          <Table columns={columns} data={meetings} emptyMessage="No meetings found" showExport={false} />
+          <Table
+            columns={columns}
+            data={meetings}
+            emptyMessage="No meetings found"
+            showExport={false}
+            onRowClick={(row) => navigate(`/committees/meetings/${row.id}`)}
+          />
         )}
 
         {/* Pagination */}

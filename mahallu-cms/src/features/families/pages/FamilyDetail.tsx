@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { FiEdit2, FiArrowLeft, FiTrash2, FiPlus } from 'react-icons/fi';
+import { FiEdit2, FiArrowLeft, FiTrash2, FiPlus, FiEye } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -83,6 +83,17 @@ export default function FamilyDetail() {
     );
   }
 
+  const handleDeleteMember = async (memberId: string, memberName: string) => {
+    const confirmed = window.confirm(`Delete ${memberName}? This action cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      await memberService.delete(memberId);
+      await fetchMembers();
+    } catch (err) {
+      console.error('Error deleting member:', err);
+    }
+  };
+
   const memberColumns: TableColumn<Member>[] = [
     { key: 'id', label: 'No.', render: (_, __, index) => index + 1 },
     { key: 'name', label: 'Name' },
@@ -101,12 +112,38 @@ export default function FamilyDetail() {
       key: 'actions',
       label: 'Actions',
       render: (_, row) => (
-        <Link
-          to={ROUTES.MEMBERS.DETAIL(row.id)}
-          className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
-        >
-          View
-        </Link>
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.MEMBERS.DETAIL(row.id));
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.MEMBERS.EDIT(row.id));
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="Edit"
+          >
+            <FiEdit2 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteMember(row.id, row.name);
+            }}
+            className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+            title="Delete"
+          >
+            <FiTrash2 className="h-4 w-4" />
+          </button>
+        </div>
       ),
     },
   ];

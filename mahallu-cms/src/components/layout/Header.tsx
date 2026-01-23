@@ -1,10 +1,12 @@
-import { FiMenu, FiBell, FiSun, FiMoon, FiUser, FiLogOut, FiSearch, FiMail, FiShield, FiCalendar, FiChevronDown, FiChevronRight } from 'react-icons/fi';
+import { FiMenu, FiBell, FiSun, FiMoon, FiUser, FiLogOut, FiSearch, FiMail, FiShield, FiCalendar, FiChevronDown, FiChevronRight, FiMapPin } from 'react-icons/fi';
 import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
 import { applyTheme } from '@/utils/theme';
 import { useState, useEffect, useRef } from 'react';
 import TenantSwitcher from './TenantSwitcher';
 import CommandPalette from '@/components/ui/CommandPalette';
+import { tenantService } from '@/services/tenantService';
+import { Tenant } from '@/types/tenant';
 
 export default function Header() {
   const { theme, toggleTheme } = useThemeStore();
@@ -12,6 +14,7 @@ export default function Header() {
   const [mounted, setMounted] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [tenantInfo, setTenantInfo] = useState<Tenant | null>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isViewingAsTenant = isSuperAdmin && currentTenantId;
@@ -20,6 +23,24 @@ export default function Header() {
     setMounted(true);
     applyTheme();
   }, []);
+
+  useEffect(() => {
+    const loadTenantInfo = async () => {
+      // Don't load tenant info for super admin without selected tenant
+      if (!currentTenantId) {
+        setTenantInfo(null);
+        return;
+      }
+      try {
+        const data = await tenantService.getById(currentTenantId);
+        setTenantInfo(data);
+      } catch (err) {
+        console.error('Error loading tenant info:', err);
+        setTenantInfo(null);
+      }
+    };
+    loadTenantInfo();
+  }, [currentTenantId]);
 
   useEffect(() => {
     if (mounted) {
@@ -198,6 +219,29 @@ export default function Header() {
                     </div>
                   </div>
                 </div>
+
+                {/* Mahallu Info */}
+                {tenantInfo && (
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-gray-200 dark:bg-gray-600 rounded-lg">
+                        <FiMapPin className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                          Mahallu
+                        </p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {tenantInfo.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {tenantInfo.code}
+                          {tenantInfo.location ? ` • ${tenantInfo.location}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
