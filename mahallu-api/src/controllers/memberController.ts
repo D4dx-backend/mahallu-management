@@ -28,6 +28,9 @@ export const getAllMembers = async (req: AuthRequest, res: Response) => {
       query.status = { $ne: 'deleted' };
     }
 
+    // Exclude deceased members by default
+    query.isDead = { $ne: true };
+
     if (familyId) query.familyId = familyId;
     if (gender) query.gender = gender;
     if (search) {
@@ -303,6 +306,9 @@ export const getMembersByFamily = async (req: Request, res: Response) => {
       // By default, exclude deleted members
       query.status = { $ne: 'deleted' };
     }
+
+    // Exclude deceased members by default
+    query.isDead = { $ne: true };
     
     const members = await Member.find(query)
       .populate('familyId', 'houseName mahallId')

@@ -9,7 +9,6 @@ import StatCard from '@/components/ui/StatCard';
 import Table from '@/components/ui/Table';
 import Modal from '@/components/ui/Modal';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn } from '@/types';
 import { Tenant } from '@/types/tenant';
 import { tenantService } from '@/services/tenantService';
@@ -159,48 +158,55 @@ export default function TenantsList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'View Details',
-            icon: <FiEye />,
-            onClick: () => navigate(`/admin/tenants/${row.id}`),
-          },
-        ];
-
-        // Add suspend/activate based on status
-        if (row.status === 'active') {
-          actionItems.push({
-            label: 'Suspend',
-            icon: <FiXCircle />,
-            onClick: () => {
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/admin/tenants/${row.id}`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View Details"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+          {row.status === 'active' ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedTenant(row);
+                setShowSuspendModal(true);
+              }}
+              className="p-1.5 rounded-md hover:bg-yellow-50 dark:hover:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 transition-colors"
+              title="Suspend"
+            >
+              <FiXCircle className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleActivate(row);
+              }}
+              className="p-1.5 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20 text-green-600 dark:text-green-400 transition-colors"
+              title="Activate"
+            >
+              <FiCheckCircle className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               setSelectedTenant(row);
-              setShowSuspendModal(true);
-            },
-            variant: 'warning',
-          });
-        } else {
-          actionItems.push({
-            label: 'Activate',
-            icon: <FiCheckCircle />,
-            onClick: () => handleActivate(row),
-            variant: 'default',
-          });
-        }
-
-        // Add delete action
-        actionItems.push({
-          label: 'Delete',
-          icon: <FiTrash2 />,
-          onClick: () => {
-            setSelectedTenant(row);
-            setShowDeleteModal(true);
-          },
-          variant: 'danger',
-        });
-
-        return <ActionsMenu items={actionItems} />;
-      },
+              setShowDeleteModal(true);
+            }}
+            className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+            title="Delete"
+          >
+            <FiTrash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 

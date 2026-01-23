@@ -28,6 +28,6 @@ export const BRAND_COLORS = {
   },
 };
 
-export const BRAND_NAME = 'Jamaah Hub';
+export const BRAND_NAME = 'Mahal Connect';
 export const LOGO_PATH = '/Logo-512x512.png';
 export const ICON_PATH = '/Icon-512x512.png';

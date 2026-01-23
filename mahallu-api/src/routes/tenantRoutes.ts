@@ -10,6 +10,7 @@ import {
   activateTenant,
 } from '../controllers/tenantController';
 import { authMiddleware, superAdminOnly } from '../middleware/authMiddleware';
+import { tenantMiddleware } from '../middleware/tenantMiddleware';
 import { validationHandler } from '../middleware/validationHandler';
 import {
   createTenantValidation,
@@ -23,9 +24,7 @@ const router = express.Router();
 
 // All routes require authentication
 router.use(authMiddleware);
-
-// All routes require super admin access
-router.use(superAdminOnly);
+router.use(tenantMiddleware);
 
 /**
  * @swagger
@@ -81,7 +80,7 @@ router.use(superAdminOnly);
  *       403:
  *         description: Super admin access required
  */
-router.get('/', getAllTenants);
+router.get('/', superAdminOnly, getAllTenants);
 
 /**
  * @swagger
@@ -220,7 +219,7 @@ router.get('/:id/stats', [param('id').isMongoId().withMessage('Invalid tenant ID
  *       403:
  *         description: Super admin access required
  */
-router.post('/', createTenantValidation, validationHandler, createTenant);
+router.post('/', superAdminOnly, createTenantValidation, validationHandler, createTenant);
 
 /**
  * @swagger
@@ -283,7 +282,7 @@ router.put('/:id', updateTenantValidation, validationHandler, updateTenant);
  *       404:
  *         description: Tenant not found
  */
-router.delete('/:id', deleteTenantValidation, validationHandler, deleteTenant);
+router.delete('/:id', superAdminOnly, deleteTenantValidation, validationHandler, deleteTenant);
 
 /**
  * @swagger
@@ -308,7 +307,7 @@ router.delete('/:id', deleteTenantValidation, validationHandler, deleteTenant);
  *       404:
  *         description: Tenant not found
  */
-router.post('/:id/suspend', [param('id').isMongoId().withMessage('Invalid tenant ID')], validationHandler, suspendTenant);
+router.post('/:id/suspend', superAdminOnly, [param('id').isMongoId().withMessage('Invalid tenant ID')], validationHandler, suspendTenant);
 
 /**
  * @swagger
@@ -333,7 +332,7 @@ router.post('/:id/suspend', [param('id').isMongoId().withMessage('Invalid tenant
  *       404:
  *         description: Tenant not found
  */
-router.post('/:id/activate', [param('id').isMongoId().withMessage('Invalid tenant ID')], validationHandler, activateTenant);
+router.post('/:id/activate', superAdminOnly, [param('id').isMongoId().withMessage('Invalid tenant ID')], validationHandler, activateTenant);
 
 export default router;
 

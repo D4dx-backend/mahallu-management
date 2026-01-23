@@ -12,6 +12,7 @@ import { tenantService } from '@/services/tenantService';
 import { useAuthStore } from '@/store/authStore';
 import { Tenant } from '@/types/tenant';
 import { formatDate } from '@/utils/format';
+import { getTenantId } from '@/utils/tenantHelper';
 
 const settingsSchema = z.object({
   varisangyaAmount: z.number().min(0, 'Varisangya amount must be positive'),
@@ -30,8 +31,7 @@ export default function MahallMain() {
   const [educationOptions, setEducationOptions] = useState<string[]>([]);
   const [areaOptions, setAreaOptions] = useState<string[]>([]);
 
-  // Get tenant ID: prioritize currentTenantId (super admin viewing as tenant), fallback to user's tenantId
-  const tenantId = currentTenantId || user?.tenantId;
+  const tenantId = getTenantId(user, currentTenantId);
 
   const {
     register,

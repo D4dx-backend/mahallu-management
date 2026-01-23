@@ -9,6 +9,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import RichTextEditor from '@/components/ui/RichTextEditor';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ROUTES } from '@/constants/routes';
 import { registrationService } from '@/services/registrationService';
@@ -16,7 +17,8 @@ import { registrationService } from '@/services/registrationService';
 const nocSchema = z.object({
   applicantName: z.string().min(1, 'Applicant name is required'),
   applicantPhone: z.string().optional(),
-  purpose: z.string().min(1, 'Purpose is required'),
+  purposeTitle: z.string().min(1, 'Purpose title is required'),
+  purposeDescription: z.string().min(1, 'Purpose description is required'),
   type: z.enum(['common', 'nikah']),
   status: z.enum(['pending', 'approved', 'rejected']).optional(),
   remarks: z.string().optional(),
@@ -34,6 +36,7 @@ export default function EditNOC() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<NOCFormData>({
     resolver: zodResolver(nocSchema),
@@ -52,7 +55,8 @@ export default function EditNOC() {
       const noc = await registrationService.getNOCById(id);
       setValue('applicantName', noc.applicantName);
       setValue('applicantPhone', noc.applicantPhone || '');
-      setValue('purpose', noc.purpose);
+      setValue('purposeTitle', noc.purposeTitle || noc.purpose || '');
+      setValue('purposeDescription', noc.purposeDescription || noc.purpose || '');
       setValue('type', noc.type);
       setValue('status', noc.status || 'pending');
       setValue('remarks', noc.remarks || '');
@@ -70,7 +74,8 @@ export default function EditNOC() {
       await registrationService.updateNOC(id, {
         applicantName: data.applicantName,
         applicantPhone: data.applicantPhone,
-        purpose: data.purpose,
+        purposeTitle: data.purposeTitle,
+        purposeDescription: data.purposeDescription,
         type: data.type,
         status: data.status,
         remarks: data.remarks,
@@ -148,13 +153,21 @@ export default function EditNOC() {
               error={errors.status?.message}
             />
             <Input
-              label="Purpose"
-              {...register('purpose')}
-              error={errors.purpose?.message}
+              label="Purpose Title"
+              {...register('purposeTitle')}
+              error={errors.purposeTitle?.message}
               required
-              placeholder="Purpose of NOC"
+              placeholder="Purpose Title"
               className="md:col-span-2"
             />
+            <div className="md:col-span-2">
+              <RichTextEditor
+                label="Purpose Description"
+                value={watch('purposeDescription') || ''}
+                onChange={(val) => setValue('purposeDescription', val)}
+                error={errors.purposeDescription?.message}
+              />
+            </div>
             <Input
               label="Remarks"
               {...register('remarks')}

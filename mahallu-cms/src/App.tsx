@@ -34,6 +34,8 @@ import CreateCommittee from './features/committees/pages/CreateCommittee';
 import CommitteeDetail from './features/committees/pages/CommitteeDetail';
 import EditCommittee from './features/committees/pages/EditCommittee';
 import MeetingsList from './features/committees/pages/MeetingsList';
+import CreateMeeting from './features/committees/pages/CreateMeeting';
+import MeetingDetail from './features/committees/pages/MeetingDetail';
 import NikahRegistrationsList from './features/registrations/pages/NikahRegistrationsList';
 import NikahRegistrationDetail from './features/registrations/pages/NikahRegistrationDetail';
 import CreateNikahRegistration from './features/registrations/pages/CreateNikahRegistration';
@@ -484,6 +486,36 @@ function App() {
           }
         />
         <Route
+          path="/committees/meetings"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MeetingsList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/committees/meetings/create"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CreateMeeting />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/committees/meetings/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <MeetingDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/committees/:id/meetings"
           element={
             <ProtectedRoute>
@@ -589,7 +621,7 @@ function App() {
           element={
             <ProtectedRoute>
               <MainLayout>
-                <CreateNOC />
+                <NOCList />
               </MainLayout>
             </ProtectedRoute>
           }

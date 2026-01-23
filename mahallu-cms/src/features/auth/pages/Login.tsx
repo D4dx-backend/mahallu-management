@@ -225,7 +225,7 @@ export default function Login() {
 
         <div className="mt-8 text-center">
           <p className="text-xs text-gray-400 dark:text-gray-600 font-medium">
-          Jamaah Hub Mahall Management System v3.1.0
+          Mahal Connect Mahall Management System v3.1.0
           </p>
         </div>
       </Card>

@@ -9,7 +9,6 @@ import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { collectibleService, Varisangya } from '@/services/collectibleService';
 import { memberService, Member } from '@/services/memberService';
@@ -189,21 +188,30 @@ export default function MemberVarisangyaList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'View Transactions',
-            icon: <FiEye />,
-            onClick: () => navigate(`${ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.TRANSACTIONS}?memberId=${row.id}`),
-          },
-          {
-            label: 'View Wallet',
-            icon: <FiDollarSign />,
-            onClick: () => navigate(`${ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.WALLET}?memberId=${row.id}`),
-          },
-        ];
-        return <ActionsMenu items={actionItems} />;
-      },
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`${ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.TRANSACTIONS}?memberId=${row.id}`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View Transactions"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`${ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.WALLET}?memberId=${row.id}`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View Wallet"
+          >
+            <FiDollarSign className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,14 +8,19 @@ import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import { ROUTES } from '@/constants/routes';
 import { registrationService } from '@/services/registrationService';
+import { memberService } from '@/services/memberService';
+import { Member } from '@/types';
 
 const nikahSchema = z.object({
   groomName: z.string().min(1, 'Groom name is required'),
   groomAge: z.number().min(0).max(150).optional().or(z.literal('')),
   brideName: z.string().min(1, 'Bride name is required'),
   brideAge: z.number().min(0).max(150).optional().or(z.literal('')),
+  mahallMemberType: z.enum(['groom', 'bride']).optional().or(z.literal('')),
+  mahallMemberId: z.string().optional(),
   nikahDate: z.string().min(1, 'Nikah date is required'),
   mahallId: z.string().optional(),
   waliName: z.string().optional(),
@@ -31,9 +36,13 @@ type NikahFormData = z.infer<typeof nikahSchema>;
 export default function CreateNikahRegistration() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<NikahFormData>({
     resolver: zodResolver(nikahSchema),
@@ -41,6 +50,43 @@ export default function CreateNikahRegistration() {
       nikahDate: new Date().toISOString().split('T')[0],
     },
   });
+
+  const selectedMahallMemberType = watch('mahallMemberType') || '';
+  const selectedMahallMemberId = watch('mahallMemberId') || '';
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!selectedMahallMemberType) {
+        setMembers([]);
+        return;
+      }
+      try {
+        const result = await memberService.getAll({
+          gender: selectedMahallMemberType === 'groom' ? 'male' : 'female',
+          search: memberSearch || undefined,
+          limit: 1000,
+        });
+        setMembers(result.data || []);
+      } catch (err) {
+        console.error('Error fetching members:', err);
+        setMembers([]);
+      }
+    };
+    fetchMembers();
+  }, [selectedMahallMemberType, memberSearch]);
+
+  useEffect(() => {
+    if (!selectedMahallMemberId) return;
+    const selectedMember = members.find((m) => m.id === selectedMahallMemberId);
+    if (!selectedMember) return;
+    if (selectedMahallMemberType === 'groom') {
+      setValue('groomName', selectedMember.name);
+      if (selectedMember.age) setValue('groomAge', selectedMember.age);
+    } else if (selectedMahallMemberType === 'bride') {
+      setValue('brideName', selectedMember.name);
+      if (selectedMember.age) setValue('brideAge', selectedMember.age);
+    }
+  }, [selectedMahallMemberId, selectedMahallMemberType, members, setValue]);
 
   const onSubmit = async (data: NikahFormData) => {
     try {
@@ -50,6 +96,9 @@ export default function CreateNikahRegistration() {
         groomAge: data.groomAge || undefined,
         brideName: data.brideName,
         brideAge: data.brideAge || undefined,
+        groomId: data.mahallMemberType === 'groom' ? data.mahallMemberId : undefined,
+        brideId: data.mahallMemberType === 'bride' ? data.mahallMemberId : undefined,
+        mahallMemberType: data.mahallMemberType || undefined,
         nikahDate: data.nikahDate,
         mahallId: data.mahallId,
         waliName: data.waliName,
@@ -91,6 +140,43 @@ export default function CreateNikahRegistration() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="md:col-span-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Mahall Member Selection
+            </h3>
+            <Select
+              label="Mahall Member"
+              options={[
+                { value: '', label: 'Select who is Mahall member' },
+                { value: 'groom', label: 'Groom' },
+                { value: 'bride', label: 'Bride' },
+              ]}
+              {...register('mahallMemberType')}
+              error={errors.mahallMemberType?.message as string | undefined}
+              className="md:col-span-2"
+            />
+            {selectedMahallMemberType && (
+              <>
+                <Input
+                  label="Search Member"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Search by name or family"
+                  className="md:col-span-2"
+                />
+                <Select
+                  label="Select Member"
+                  options={[
+                    { value: '', label: 'Select member...' },
+                    ...members.map((member) => ({
+                      value: member.id,
+                      label: `${member.name} (${member.familyName})`,
+                    })),
+                  ]}
+                  {...register('mahallMemberId')}
+                  className="md:col-span-2"
+                />
+              </>
+            )}
             <h3 className="md:col-span-2 text-lg font-semibold text-gray-900 dark:text-gray-100">Groom Information</h3>
             <Input
               label="Groom Name"

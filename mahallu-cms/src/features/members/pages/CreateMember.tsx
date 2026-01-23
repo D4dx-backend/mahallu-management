@@ -16,6 +16,7 @@ import { familyService } from '@/services/familyService';
 import { tenantService } from '@/services/tenantService';
 import { Family } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { getTenantId as extractTenantId } from '@/utils/tenantHelper';
 
 const memberSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -33,6 +34,10 @@ const memberSchema = z.object({
     { message: 'Phone number must be exactly 10 digits' }
   ),
   education: z.string().optional(),
+  maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']).optional().or(z.literal('')),
+  marriageCount: z.number().min(0).optional().or(z.literal('')),
+  isOrphan: z.boolean().optional(),
+  isDead: z.boolean().optional(),
 });
 
 type MemberFormData = z.infer<typeof memberSchema>;
@@ -77,7 +82,7 @@ export default function CreateMember() {
 
       // Fetch education options from tenant settings
       const { currentTenantId, user } = useAuthStore.getState();
-      const tenantId = currentTenantId || user?.tenantId;
+      const tenantId = extractTenantId(user, currentTenantId);
       if (tenantId) {
         try {
           const tenantData = await tenantService.getById(tenantId);
@@ -111,6 +116,8 @@ export default function CreateMember() {
         age: data.age === '' ? undefined : Number(data.age),
         gender: data.gender === '' ? undefined : data.gender,
         bloodGroup: data.bloodGroup === '' ? undefined : data.bloodGroup,
+        maritalStatus: data.maritalStatus === '' ? undefined : data.maritalStatus,
+        marriageCount: data.marriageCount === '' ? undefined : Number(data.marriageCount),
       };
       await memberService.create(memberData);
       navigate(ROUTES.MEMBERS.LIST);
@@ -134,6 +141,14 @@ export default function CreateMember() {
     { value: 'AB -ve', label: 'AB -ve' },
     { value: 'O +ve', label: 'O +ve' },
     { value: 'O -ve', label: 'O -ve' },
+  ];
+
+  const maritalStatusOptions = [
+    { value: '', label: 'Select Marital Status' },
+    { value: 'single', label: 'Single' },
+    { value: 'married', label: 'Married' },
+    { value: 'divorced', label: 'Divorced' },
+    { value: 'widowed', label: 'Widowed' },
   ];
 
   const familyOptions = [
@@ -266,6 +281,28 @@ export default function CreateMember() {
                 ]}
                 className="md:col-span-2"
               />
+              <Select
+                label="Marital Status"
+                {...register('maritalStatus')}
+                options={maritalStatusOptions}
+              />
+              <Input
+                label="Number of Marriages"
+                type="number"
+                min={0}
+                {...register('marriageCount', { valueAsNumber: true })}
+                placeholder="0"
+              />
+              <div className="flex items-center gap-4 md:col-span-2">
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" {...register('isOrphan')} className="rounded border-gray-300 text-primary-600" />
+                  Is Orphan
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input type="checkbox" {...register('isDead')} className="rounded border-gray-300 text-primary-600" />
+                  Is Deceased
+                </label>
+              </div>
             </div>
           </div>
 

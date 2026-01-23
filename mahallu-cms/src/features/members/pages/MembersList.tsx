@@ -10,7 +10,6 @@ import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { Member } from '@/types';
 import { memberService } from '@/services/memberService';
@@ -117,21 +116,30 @@ export default function MembersList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'View',
-            icon: <FiEye />,
-            onClick: () => navigate(ROUTES.MEMBERS.DETAIL(row.id)),
-          },
-          {
-            label: 'Edit',
-            icon: <FiEdit2 />,
-            onClick: () => navigate(ROUTES.MEMBERS.EDIT(row.id)),
-          },
-        ];
-        return <ActionsMenu items={actionItems} />;
-      },
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.MEMBERS.DETAIL(row.id));
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.MEMBERS.EDIT(row.id));
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="Edit"
+          >
+            <FiEdit2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -234,6 +242,7 @@ export default function MembersList() {
             exportFilename="members"
             exportTitle="All Family Members"
             showExport={false}
+            onRowClick={(row) => navigate(ROUTES.MEMBERS.DETAIL(row.id))}
             onExportAll={async () => {
               // Fetch all filtered data without pagination
               const params: any = {

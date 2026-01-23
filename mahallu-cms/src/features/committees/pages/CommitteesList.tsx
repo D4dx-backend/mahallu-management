@@ -10,7 +10,6 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { Committee } from '@/types';
 import { ROUTES } from '@/constants/routes';
@@ -146,35 +145,51 @@ export default function CommitteesList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'View',
-            icon: <FiEye />,
-            onClick: () => navigate(ROUTES.COMMITTEES.DETAIL(row.id)),
-          },
-          {
-            label: 'Meetings',
-            icon: <FiCalendar />,
-            onClick: () => navigate(`/committees/${row.id}/meetings`),
-          },
-          {
-            label: 'Edit',
-            icon: <FiEdit2 />,
-            onClick: () => navigate(`/committees/${row.id}/edit`),
-          },
-          {
-            label: 'Delete',
-            icon: <FiTrash2 />,
-            onClick: () => {
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.COMMITTEES.DETAIL(row.id));
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/committees/${row.id}/meetings`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="Meetings"
+          >
+            <FiCalendar className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/committees/${row.id}/edit`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="Edit"
+          >
+            <FiEdit2 className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
               setSelectedCommittee(row);
               setShowDeleteModal(true);
-            },
-            variant: 'danger',
-          },
-        ];
-        return <ActionsMenu items={actionItems} />;
-      },
+            }}
+            className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors"
+            title="Delete"
+          >
+            <FiTrash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -254,6 +269,7 @@ export default function CommitteesList() {
             data={committees}
             emptyMessage="No committees found"
             showExport={false}
+            onRowClick={(row) => navigate(ROUTES.COMMITTEES.DETAIL(row.id))}
           />
         )}
 

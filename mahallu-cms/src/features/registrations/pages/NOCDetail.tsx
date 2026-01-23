@@ -165,9 +165,18 @@ export default function NOCDetail() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">NOC Details</h2>
           <div className="space-y-3">
             <div>
-              <span className="text-sm text-gray-500 dark:text-gray-400">Purpose</span>
-              <p className="text-gray-900 dark:text-gray-100">{noc.purpose}</p>
+              <span className="text-sm text-gray-500 dark:text-gray-400">Purpose Title</span>
+              <p className="text-gray-900 dark:text-gray-100">{noc.purposeTitle || noc.purpose}</p>
             </div>
+            {(noc.purposeDescription || noc.purpose) && (
+              <div>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Purpose Description</span>
+                <div
+                  className="prose prose-sm max-w-none text-gray-900 dark:text-gray-100"
+                  dangerouslySetInnerHTML={{ __html: noc.purposeDescription || noc.purpose || '' }}
+                />
+              </div>
+            )}
             {noc.issuedDate && (
               <div>
                 <span className="text-sm text-gray-500 dark:text-gray-400">Issued Date</span>

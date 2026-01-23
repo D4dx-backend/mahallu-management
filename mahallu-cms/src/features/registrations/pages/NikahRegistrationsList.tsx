@@ -10,7 +10,6 @@ import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { registrationService, NikahRegistration } from '@/services/registrationService';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -129,16 +128,20 @@ export default function NikahRegistrationsList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'View',
-            icon: <FiEye />,
-            onClick: () => navigate(`/registrations/nikah/${row.id}`),
-          },
-        ];
-        return <ActionsMenu items={actionItems} />;
-      },
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/registrations/nikah/${row.id}`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View"
+          >
+            <FiEye className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -228,7 +231,13 @@ export default function NikahRegistrationsList() {
             </Button>
           </div>
         ) : (
-          <Table columns={columns} data={registrations} emptyMessage="No nikah registrations found" showExport={false} />
+          <Table
+            columns={columns}
+            data={registrations}
+            emptyMessage="No nikah registrations found"
+            showExport={false}
+            onRowClick={(row) => navigate(`/registrations/nikah/${row.id}`)}
+          />
         )}
 
         {/* Pagination */}

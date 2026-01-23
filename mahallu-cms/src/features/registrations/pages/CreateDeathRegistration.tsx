@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,15 +8,20 @@ import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import Select from '@/components/ui/Select';
 import { ROUTES } from '@/constants/routes';
 import { registrationService } from '@/services/registrationService';
+import { memberService } from '@/services/memberService';
+import { Member } from '@/types';
 
 const deathSchema = z.object({
   deceasedName: z.string().min(1, 'Deceased name is required'),
+  deceasedId: z.string().optional(),
   deathDate: z.string().min(1, 'Death date is required'),
   placeOfDeath: z.string().optional(),
   causeOfDeath: z.string().optional(),
   mahallId: z.string().optional(),
+  familyId: z.string().optional(),
   informantName: z.string().optional(),
   informantRelation: z.string().optional(),
   informantPhone: z.string().optional(),
@@ -28,9 +33,13 @@ type DeathFormData = z.infer<typeof deathSchema>;
 export default function CreateDeathRegistration() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<DeathFormData>({
     resolver: zodResolver(deathSchema),
@@ -39,15 +48,46 @@ export default function CreateDeathRegistration() {
     },
   });
 
+  const selectedMemberId = watch('deceasedId') || '';
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        const result = await memberService.getAll({
+          search: memberSearch || undefined,
+          limit: 1000,
+        });
+        setMembers(result.data || []);
+      } catch (err) {
+        console.error('Error fetching members:', err);
+        setMembers([]);
+      }
+    };
+    fetchMembers();
+  }, [memberSearch]);
+
+  useEffect(() => {
+    if (!selectedMemberId) return;
+    const selectedMember = members.find((m) => m.id === selectedMemberId);
+    if (!selectedMember) return;
+    setValue('deceasedName', selectedMember.name);
+    setValue('familyId', selectedMember.familyId);
+    if (selectedMember.mahallId) {
+      setValue('mahallId', selectedMember.mahallId);
+    }
+  }, [selectedMemberId, members, setValue]);
+
   const onSubmit = async (data: DeathFormData) => {
     try {
       setError(null);
       await registrationService.createDeath({
         deceasedName: data.deceasedName,
+        deceasedId: data.deceasedId || undefined,
         deathDate: data.deathDate,
         placeOfDeath: data.placeOfDeath,
         causeOfDeath: data.causeOfDeath,
         mahallId: data.mahallId,
+        familyId: data.familyId,
         informantName: data.informantName,
         informantRelation: data.informantRelation,
         informantPhone: data.informantPhone,
@@ -85,6 +125,28 @@ export default function CreateDeathRegistration() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="md:col-span-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+              Member Selection
+            </h3>
+            <Input
+              label="Search Member"
+              value={memberSearch}
+              onChange={(e) => setMemberSearch(e.target.value)}
+              placeholder="Search by name or family"
+              className="md:col-span-2"
+            />
+            <Select
+              label="Select Member"
+              options={[
+                { value: '', label: 'Select member...' },
+                ...members.map((member) => ({
+                  value: member.id,
+                  label: `${member.name} (${member.familyName})`,
+                })),
+              ]}
+              {...register('deceasedId')}
+              className="md:col-span-2"
+            />
             <Input
               label="Deceased Name"
               {...register('deceasedName')}

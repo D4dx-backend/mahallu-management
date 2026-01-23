@@ -9,7 +9,6 @@ import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
-import ActionsMenu, { ActionMenuItem } from '@/components/ui/ActionsMenu';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { User } from '@/types';
 import { ROUTES } from '@/constants/routes';
@@ -146,16 +145,20 @@ export default function MahallUsersList() {
     {
       key: 'actions',
       label: 'Actions',
-      render: (_, row) => {
-        const actionItems: ActionMenuItem[] = [
-          {
-            label: 'Edit',
-            icon: <FiEdit2 />,
-            onClick: () => navigate(ROUTES.USERS.EDIT_MAHALL(row.id)),
-          },
-        ];
-        return <ActionsMenu items={actionItems} />;
-      },
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(ROUTES.USERS.EDIT_MAHALL(row.id));
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="Edit"
+          >
+            <FiEdit2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
     },
   ];
 
@@ -233,6 +236,7 @@ export default function MahallUsersList() {
             data={users}
             emptyMessage="No users found"
             showExport={false}
+            onRowClick={(row) => navigate(`/users/mahall/${row.id}`)}
           />
         )}
 

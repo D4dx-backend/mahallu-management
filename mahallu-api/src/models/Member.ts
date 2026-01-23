@@ -12,6 +12,10 @@ export interface IMember extends Document {
   healthStatus?: string;
   phone?: string;
   education?: string;
+  maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed';
+  marriageCount?: number;
+  isOrphan?: boolean;
+  isDead?: boolean;
   status: 'active' | 'inactive' | 'deleted';
   createdAt: Date;
   updatedAt: Date;
@@ -67,6 +71,24 @@ const MemberSchema = new Schema<IMember>(
     education: {
       type: String,
       trim: true,
+    },
+    maritalStatus: {
+      type: String,
+      enum: ['single', 'married', 'divorced', 'widowed'],
+    },
+    marriageCount: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    isOrphan: {
+      type: Boolean,
+      default: false,
+    },
+    isDead: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
     status: {
       type: String,

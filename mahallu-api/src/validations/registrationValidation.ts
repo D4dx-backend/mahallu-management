@@ -30,6 +30,10 @@ export const createNikahRegistrationValidation = [
     .optional()
     .isMongoId()
     .withMessage('Invalid bride member ID'),
+  body('mahallMemberType')
+    .optional()
+    .isIn(['groom', 'bride'])
+    .withMessage('Invalid mahall member type'),
   body('nikahDate')
     .notEmpty()
     .withMessage('Nikah date is required')
@@ -114,10 +118,18 @@ export const createNOCValidation = [
     .trim()
     .matches(/^[0-9]{10}$/)
     .withMessage('Applicant phone must be exactly 10 digits'),
-  body('purpose')
+  body('purposeTitle')
+    .optional()
     .trim()
-    .notEmpty()
-    .withMessage('Purpose is required')
+    .isLength({ min: 2, max: 200 })
+    .withMessage('Purpose title must be between 2 and 200 characters'),
+  body('purposeDescription')
+    .optional()
+    .isLength({ min: 2 })
+    .withMessage('Purpose description must be at least 2 characters'),
+  body('purpose')
+    .optional()
+    .trim()
     .isLength({ min: 2, max: 500 })
     .withMessage('Purpose must be between 2 and 500 characters'),
   body('type')
@@ -156,6 +168,20 @@ export const updateNOCValidation = [
     .optional()
     .isISO8601()
     .withMessage('Expiry date must be a valid date'),
+  body('purposeTitle')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 200 })
+    .withMessage('Purpose title must be between 2 and 200 characters'),
+  body('purposeDescription')
+    .optional()
+    .isLength({ min: 2 })
+    .withMessage('Purpose description must be at least 2 characters'),
+  body('purpose')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 500 })
+    .withMessage('Purpose must be between 2 and 500 characters'),
   body('remarks').optional().trim(),
 ];
 
