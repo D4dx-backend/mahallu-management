@@ -36,7 +36,7 @@ export default function OrphansReportPage() {
       Name: orphan.name,
       Age: orphan.age || '-',
       Gender: orphan.gender || '-',
-      Family: orphan.familyName
+      Family: orphan.family || '-'
     }));
     
     const headers = ['Name', 'Age', 'Gender', 'Family'];
@@ -77,7 +77,7 @@ export default function OrphansReportPage() {
       name: orphan.name,
       age: orphan.age || '-',
       gender: orphan.gender || '-',
-      familyName: orphan.familyName
+      familyName: orphan.family || '-'
     }));
     
     exportToPDF(columns, data, `orphans-report-${new Date().toISOString().split('T')[0]}`, 'Orphans Report');

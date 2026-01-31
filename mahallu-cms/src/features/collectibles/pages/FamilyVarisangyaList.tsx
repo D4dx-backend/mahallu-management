@@ -9,13 +9,14 @@ import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
-import { TableColumn, Pagination as PaginationType } from '@/types';
+import { TableColumn, Pagination as PaginationType, Family } from '@/types';
 import { collectibleService, Varisangya } from '@/services/collectibleService';
-import { familyService, Family } from '@/services/familyService';
+import { familyService } from '@/services/familyService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/format';
 import { ROUTES } from '@/constants/routes';
-import { exportToCSV, exportToJSON, exportToPDF } from '@/utils/exportUtils';
+import { exportToCSV, exportToJSON } from '@/utils/exportUtils';
+import { exportInvoicesToPdf, InvoiceDetails } from '@/utils/invoiceUtils';
 
 interface FamilyVarisangyaData extends Family {
   totalVarisangya?: number;
@@ -144,7 +145,29 @@ export default function FamilyVarisangyaList() {
           exportToJSON(columns, dataToExport, filename);
           break;
         case 'pdf':
-          exportToPDF(columns, dataToExport, filename, title);
+          {
+            const invoices: InvoiceDetails[] = [];
+            for (const family of familiesData) {
+              const familyVarisangyas = allVarisangyas.filter(
+                (v) => v.familyId === family.id
+              );
+              
+              for (const entry of familyVarisangyas) {
+                invoices.push({
+                  title: 'Family Varisangya Payment',
+                  receiptNo: entry.receiptNo,
+                  payerLabel: 'Family',
+                  payerName: family.houseName || '-',
+                  amount: entry.amount,
+                  paymentDate: entry.paymentDate,
+                  paymentMethod: entry.paymentMethod,
+                  remarks: entry.remarks,
+                });
+              }
+            }
+
+            await exportInvoicesToPdf(invoices, `family-varisangya-invoices-${new Date().toISOString().split('T')[0]}`);
+          }
           break;
       }
     } catch (error: any) {

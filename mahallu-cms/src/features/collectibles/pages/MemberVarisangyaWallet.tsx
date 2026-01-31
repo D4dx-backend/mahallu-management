@@ -7,11 +7,14 @@ import Button from '@/components/ui/Button';
 import StatCard from '@/components/ui/StatCard';
 import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import TableToolbar from '@/components/ui/TableToolbar';
 import { TableColumn } from '@/types';
 import { collectibleService, Wallet, Transaction } from '@/services/collectibleService';
 import { memberService } from '@/services/memberService';
 import { formatDate } from '@/utils/format';
 import { ROUTES } from '@/constants/routes';
+import { exportToCSV, exportToJSON } from '@/utils/exportUtils';
+import { exportInvoicesToPdf, InvoiceDetails } from '@/utils/invoiceUtils';
 
 export default function MemberVarisangyaWallet() {
   const [searchParams] = useSearchParams();
@@ -20,6 +23,9 @@ export default function MemberVarisangyaWallet() {
   const [wallets, setWallets] = useState<(Wallet & { member?: any })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
 
   useEffect(() => {
     fetchWallets();
@@ -61,6 +67,54 @@ export default function MemberVarisangyaWallet() {
       console.error('Error fetching wallets:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExport = async (type: 'csv' | 'json' | 'pdf') => {
+    try {
+      setIsExporting(true);
+
+      if (wallets.length === 0) {
+        alert('No data to export');
+        return;
+      }
+
+      const filename = `member-varisangya-wallets${memberId ? `-${memberId}` : ''}`;
+
+      switch (type) {
+        case 'csv':
+          exportToCSV(columns, wallets, filename);
+          break;
+        case 'json':
+          exportToJSON(columns, wallets, filename);
+          break;
+        case 'pdf':
+          {
+            const invoices: InvoiceDetails[] = [];
+            for (const wallet of wallets) {
+              if (wallet.member) {
+                invoices.push({
+                  title: 'Member Varisangya Wallet',
+                  receiptNo: '-',
+                  payerLabel: 'Member',
+                  payerName: wallet.member.name || '-',
+                  amount: wallet.balance || 0,
+                  paymentDate: wallet.lastTransactionDate || new Date().toISOString(),
+                  paymentMethod: '-',
+                  remarks: `Wallet Balance as of ${formatDate(new Date().toISOString())}`,
+                });
+              }
+            }
+
+            await exportInvoicesToPdf(invoices, filename);
+          }
+          break;
+      }
+    } catch (error: any) {
+      console.error('Export error:', error);
+      alert(error?.message || 'Failed to export data');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -158,6 +212,17 @@ export default function MemberVarisangyaWallet() {
       </div>
 
       <Card>
+        <TableToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onFilterClick={() => setIsFilterVisible(!isFilterVisible)}
+          isFilterVisible={isFilterVisible}
+          hasFilters={false}
+          onRefresh={fetchWallets}
+          onExport={handleExport}
+          isExporting={isExporting}
+        />
+
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <LoadingSpinner />
@@ -170,7 +235,7 @@ export default function MemberVarisangyaWallet() {
             </Button>
           </div>
         ) : (
-          <Table columns={columns} data={wallets} emptyMessage="No wallets found" />
+          <Table columns={columns} data={wallets} emptyMessage="No wallets found" showExport={false} />
         )}
       </Card>
     </div>

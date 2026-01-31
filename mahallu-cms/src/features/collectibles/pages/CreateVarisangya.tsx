@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useEffect, useMemo } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
@@ -9,18 +9,23 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import MultiSelect from '@/components/ui/MultiSelect';
 import { collectibleService } from '@/services/collectibleService';
 import { familyService } from '@/services/familyService';
 import { memberService } from '@/services/memberService';
+import { tenantService } from '@/services/tenantService';
 import { Family, Member } from '@/types';
+import { Tenant } from '@/types/tenant';
+import { downloadInvoicePdf, InvoiceDetails } from '@/utils/invoiceUtils';
+import { useAuthStore } from '@/store/authStore';
+import { getTenantId as extractTenantId } from '@/utils/tenantHelper';
 
 const varisangyaSchema = z.object({
-  familyId: z.string().optional(),
-  memberId: z.string().optional(),
+  familyIds: z.array(z.string()).optional(),
+  memberIds: z.array(z.string()).optional(),
   amount: z.number().min(0.01, 'Amount is required'),
   paymentDate: z.string().min(1, 'Payment date is required'),
   paymentMethod: z.string().optional(),
-  receiptNo: z.string().optional(),
   remarks: z.string().optional(),
 });
 
@@ -28,34 +33,64 @@ type VarisangyaFormData = z.infer<typeof varisangyaSchema>;
 
 export default function CreateVarisangya() {
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [families, setFamilies] = useState<Family[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [createdInvoices, setCreatedInvoices] = useState<InvoiceDetails[]>([]);
+  const [nextReceiptNo, setNextReceiptNo] = useState<string>('Loading...');
+  const [tenantData, setTenantData] = useState<Tenant | null>(null);
+  const [loadingTenant, setLoadingTenant] = useState(true);
   const {
     register,
     handleSubmit,
     watch,
+    control,
+    reset,
+    setError,
+    clearErrors,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<VarisangyaFormData>({
     resolver: zodResolver(varisangyaSchema),
     defaultValues: {
+      familyIds: [],
+      memberIds: [],
       paymentDate: new Date().toISOString().split('T')[0],
     },
   });
 
-  const selectedFamilyId = watch('familyId');
+  const selectedFamilyIds = watch('familyIds') || [];
+  const selectedMemberIds = watch('memberIds') || [];
 
   useEffect(() => {
+    fetchTenantData();
     fetchFamilies();
+    fetchMembers();
+    fetchNextReceiptNo();
   }, []);
 
   useEffect(() => {
-    if (selectedFamilyId) {
-      fetchMembers(selectedFamilyId);
-    } else {
-      setMembers([]);
+    if ((selectedFamilyIds.length > 0 || selectedMemberIds.length > 0) && !loadingTenant && tenantData && families.length > 0) {
+      clearErrors('familyIds');
+      setSuggestedAmount();
     }
-  }, [selectedFamilyId]);
+  }, [selectedFamilyIds, selectedMemberIds, tenantData, loadingTenant, families, members]);
+
+  const fetchTenantData = async () => {
+    try {
+      setLoadingTenant(true);
+      const { currentTenantId, user } = useAuthStore.getState();
+      const tenantId = extractTenantId(user, currentTenantId);
+      if (tenantId) {
+        const tenant = await tenantService.getById(tenantId);
+        setTenantData(tenant);
+      }
+    } catch (err) {
+      console.error('Error fetching tenant data:', err);
+    } finally {
+      setLoadingTenant(false);
+    }
+  };
 
   const fetchFamilies = async () => {
     try {
@@ -67,33 +102,135 @@ export default function CreateVarisangya() {
     }
   };
 
-  const fetchMembers = async (familyId: string) => {
+  const fetchMembers = async () => {
     try {
-      const data = await memberService.getByFamily(familyId);
-      setMembers(data);
+      const result = await memberService.getAll({ limit: 10000 });
+      setMembers(result.data || []);
     } catch (err) {
       console.error('Error fetching members:', err);
     }
   };
 
-  const onSubmit = async (data: VarisangyaFormData) => {
+  const fetchNextReceiptNo = async () => {
     try {
-      setError(null);
-      await collectibleService.createVarisangya({
-        familyId: data.familyId || undefined,
-        memberId: data.memberId || undefined,
+      const receiptNo = await collectibleService.getNextReceiptNo('varisangya');
+      setNextReceiptNo(receiptNo);
+    } catch (err) {
+      console.error('Error fetching receipt number:', err);
+      setNextReceiptNo('Auto-generated');
+    }
+  };
+
+  const setSuggestedAmount = () => {
+    if (!tenantData || loadingTenant) return;
+    if (!families.length && !members.length) return;
+
+    console.log('Setting suggested amount...', {
+      selectedFamilyIds,
+      selectedMemberIds,
+      tenantData: tenantData.settings,
+    });
+
+    // Suggest amount based on first selected entity
+    let suggestedAmount = 0;
+
+    // If family is selected, use the first family's grade amount
+    if (selectedFamilyIds.length > 0) {
+      const firstFamily = families.find((f) => f.id === selectedFamilyIds[0]);
+      console.log('First family:', firstFamily);
+      if (firstFamily?.varisangyaGrade && tenantData.settings?.varisangyaGrades) {
+        const gradeConfig = tenantData.settings.varisangyaGrades.find(
+          (grade) => grade.name === firstFamily.varisangyaGrade
+        );
+        console.log('Grade config:', gradeConfig);
+        if (gradeConfig) {
+          suggestedAmount = gradeConfig.amount;
+        }
+      }
+    }
+
+    // If no amount found from family, and members are selected, use default member amount
+    if (suggestedAmount === 0 && selectedMemberIds.length > 0) {
+      suggestedAmount = tenantData.settings?.varisangyaAmount || 0;
+      console.log('Using member amount:', suggestedAmount);
+    }
+
+    // Set the suggested amount
+    console.log('Final suggested amount:', suggestedAmount);
+    if (suggestedAmount > 0) {
+      setValue('amount', suggestedAmount);
+    }
+  };
+
+  const onSubmit = async (data: VarisangyaFormData) => {
+    const familyIds = data.familyIds?.filter(Boolean) || [];
+    const memberIds = data.memberIds?.filter(Boolean) || [];
+
+    if (familyIds.length === 0 && memberIds.length === 0) {
+      setError('familyIds', { type: 'manual', message: 'Select at least one family or member.' });
+      return;
+    }
+
+    try {
+      setSubmitError(null);
+      clearErrors('familyIds');
+      setCreatedInvoices([]);
+
+      const payloadBase = {
         amount: data.amount,
         paymentDate: data.paymentDate,
         paymentMethod: data.paymentMethod,
-        receiptNo: data.receiptNo,
         remarks: data.remarks,
+      };
+
+      const payloads = [
+        ...familyIds.map((familyId) => ({ ...payloadBase, familyId })),
+        ...memberIds.map((memberId) => ({ ...payloadBase, memberId })),
+      ];
+
+      const results = [];
+      for (const payload of payloads) {
+        results.push(await collectibleService.createVarisangya(payload));
+      }
+
+      const familyMap = new Map(families.map((f) => [f.id, f]));
+      const memberMap = new Map(members.map((m) => [m.id, m]));
+
+      const invoices: InvoiceDetails[] = results.map((entry) => {
+        const member = entry.memberId ? memberMap.get(entry.memberId) : undefined;
+        const family = entry.familyId ? familyMap.get(entry.familyId) : undefined;
+        return {
+          title: 'Varisangya Invoice',
+          receiptNo: entry.receiptNo,
+          payerLabel: member ? 'Member' : 'Family',
+          payerName: member?.name || family?.houseName || 'Unknown',
+          amount: entry.amount,
+          paymentDate: entry.paymentDate,
+          paymentMethod: entry.paymentMethod,
+          remarks: entry.remarks,
+        };
       });
-      navigate('/collectibles/varisangya');
+
+      setCreatedInvoices(invoices);
+      fetchNextReceiptNo();
+      reset({
+        familyIds: [],
+        memberIds: [],
+        amount: undefined as unknown as number,
+        paymentDate: new Date().toISOString().split('T')[0],
+        paymentMethod: '',
+        remarks: '',
+      });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create varisangya payment. Please try again.');
+      setSubmitError(err.response?.data?.message || 'Failed to create varisangya payment. Please try again.');
       console.error('Error creating varisangya:', err);
     }
   };
+
+  const filteredMembers = useMemo(() => {
+    if (selectedFamilyIds.length === 0) return members;
+    return members.filter((member) => selectedFamilyIds.includes(member.familyId));
+  }, [members, selectedFamilyIds]);
 
   return (
     <div className="space-y-6">
@@ -113,38 +250,73 @@ export default function CreateVarisangya() {
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <Card className="space-y-6">
-          {error && (
+          {submitError && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm dark:bg-red-900 dark:border-red-700 dark:text-red-200">
-              {error}
+              {submitError}
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
-              label="Family (Optional)"
-              options={[
-                { value: '', label: 'Select Family' },
-                ...families.map((f) => ({ value: f.id, label: f.houseName })),
-              ]}
-              {...register('familyId')}
+            <Controller
+              control={control}
+              name="familyIds"
+              render={({ field }) => (
+                <MultiSelect
+                  label="Families (Optional)"
+                  options={families.map((family) => {
+                    let amountInfo = '';
+                    if (family.varisangyaGrade && tenantData?.settings?.varisangyaGrades) {
+                      const gradeConfig = tenantData.settings.varisangyaGrades.find(
+                        (grade) => grade.name === family.varisangyaGrade
+                      );
+                      if (gradeConfig) {
+                        amountInfo = ` - ₹${gradeConfig.amount}`;
+                      }
+                    }
+                    return {
+                      value: family.id,
+                      label: `${family.houseName}${amountInfo}`,
+                    };
+                  })}
+                  value={field.value || []}
+                  onChange={field.onChange}
+                  error={errors.familyIds?.message}
+                  placeholder="Select families"
+                  showSelectAll
+                  disabled={loadingTenant}
+                />
+              )}
             />
-            <Select
-              label="Member (Optional)"
-              options={[
-                { value: '', label: 'Select Member' },
-                ...members.map((m) => ({ value: m.id, label: `${m.name} (${m.familyName})` })),
-              ]}
-              {...register('memberId')}
-              disabled={!selectedFamilyId}
+            <Controller
+              control={control}
+              name="memberIds"
+              render={({ field }) => {
+                const memberAmount = tenantData?.settings?.varisangyaAmount || 0;
+                return (
+                  <MultiSelect
+                    label={`Members (Optional)${memberAmount > 0 ? ` - ₹${memberAmount} each` : ''}`}
+                    options={filteredMembers.map((member) => ({
+                      value: member.id,
+                      label: `${member.name} (${member.familyName})`,
+                    }))}
+                    value={field.value || []}
+                    onChange={field.onChange}
+                    placeholder="Select members"
+                    showSelectAll
+                    disabled={loadingTenant}
+                  />
+                );
+              }}
             />
             <Input
-              label="Amount"
+              label="Amount (per invoice)"
               type="number"
               step="0.01"
               {...register('amount', { valueAsNumber: true })}
               error={errors.amount?.message}
               required
               placeholder="Amount"
+              helperText="This amount will be used for each selected family/member"
             />
             <Input
               label="Payment Date"
@@ -164,7 +336,12 @@ export default function CreateVarisangya() {
               ]}
               {...register('paymentMethod')}
             />
-            <Input label="Receipt No." {...register('receiptNo')} placeholder="Receipt Number" />
+            <Input
+              label="Next Receipt No."
+              value={nextReceiptNo}
+              disabled
+              helperText="Each payment will increment this number."
+            />
             <Input
               label="Remarks"
               {...register('remarks')}
@@ -174,7 +351,11 @@ export default function CreateVarisangya() {
           </div>
 
           <div className="flex justify-end gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Button type="button" variant="outline" onClick={() => navigate('/collectibles/varisangya')}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/collectibles/varisangya')}
+            >
               <FiX className="h-4 w-4 mr-2" />
               Cancel
             </Button>
@@ -185,6 +366,43 @@ export default function CreateVarisangya() {
           </div>
         </Card>
       </form>
+
+      {createdInvoices.length > 0 && (
+        <Card className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Created Invoices</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Download receipts for the new payments</p>
+            </div>
+            <Button variant="outline" onClick={() => navigate('/collectibles/varisangya')}>
+              Go to Varisangyas
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {createdInvoices.map((invoice, index) => (
+              <div
+                key={`${invoice.receiptNo || 'invoice'}-${index}`}
+                className="flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3"
+              >
+                <div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {invoice.payerName}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Receipt: {invoice.receiptNo || 'Auto-generated'}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => downloadInvoicePdf(invoice)}
+                >
+                  Download PDF
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

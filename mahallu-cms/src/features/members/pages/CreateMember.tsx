@@ -151,6 +151,16 @@ export default function CreateMember() {
     { value: 'widowed', label: 'Widowed' },
   ];
 
+  const healthStatusOptions = [
+    { value: '', label: 'Select Health Status' },
+    { value: 'healthy', label: 'Healthy' },
+    { value: 'under_treatment', label: 'Under Treatment' },
+    { value: 'chronic', label: 'Chronic Illness' },
+    { value: 'disabled', label: 'Disabled' },
+    { value: 'critical', label: 'Critical' },
+    { value: 'recovering', label: 'Recovering' },
+  ];
+
   const familyOptions = [
     { value: '', label: 'Select family...' },
     ...families.map((family) => ({
@@ -266,10 +276,10 @@ export default function CreateMember() {
               Additional Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
+              <Select
                 label="Health Status"
                 {...register('healthStatus')}
-                placeholder="Health Status"
+                options={healthStatusOptions}
                 className="md:col-span-2"
               />
               <Select

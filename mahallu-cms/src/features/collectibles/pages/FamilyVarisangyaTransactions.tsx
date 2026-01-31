@@ -6,11 +6,14 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import TableToolbar from '@/components/ui/TableToolbar';
 import { TableColumn } from '@/types';
 import { collectibleService, Transaction, Wallet } from '@/services/collectibleService';
 import { familyService } from '@/services/familyService';
 import { formatDate } from '@/utils/format';
 import { ROUTES } from '@/constants/routes';
+import { exportToCSV, exportToJSON } from '@/utils/exportUtils';
+import { exportInvoicesToPdf, InvoiceDetails } from '@/utils/invoiceUtils';
 
 export default function FamilyVarisangyaTransactions() {
   const [searchParams] = useSearchParams();
@@ -21,6 +24,9 @@ export default function FamilyVarisangyaTransactions() {
   const [family, setFamily] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
 
   useEffect(() => {
     if (familyId) {
@@ -91,6 +97,51 @@ export default function FamilyVarisangyaTransactions() {
       console.error('Error fetching transactions:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExport = async (type: 'csv' | 'json' | 'pdf') => {
+    try {
+      setIsExporting(true);
+
+      if (transactions.length === 0) {
+        alert('No data to export');
+        return;
+      }
+
+      const filename = `family-varisangya-transactions${familyId ? `-${familyId}` : ''}`;
+
+      switch (type) {
+        case 'csv':
+          exportToCSV(columns, transactions, filename);
+          break;
+        case 'json':
+          exportToJSON(columns, transactions, filename);
+          break;
+        case 'pdf':
+          {
+            const invoices: InvoiceDetails[] = transactions
+              .filter((t) => t.type === 'credit' && t.referenceType === 'varisangya')
+              .map((t) => ({
+                title: 'Family Varisangya Transaction',
+                receiptNo: t.referenceId || '-',
+                payerLabel: 'Family',
+                payerName: family?.houseName || '-',
+                amount: t.amount,
+                paymentDate: t.createdAt,
+                paymentMethod: '-',
+                remarks: t.description,
+              }));
+
+            await exportInvoicesToPdf(invoices, filename);
+          }
+          break;
+      }
+    } catch (error: any) {
+      console.error('Export error:', error);
+      alert(error?.message || 'Failed to export data');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -180,6 +231,17 @@ export default function FamilyVarisangyaTransactions() {
       )}
 
       <Card>
+        <TableToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onFilterClick={() => setIsFilterVisible(!isFilterVisible)}
+          isFilterVisible={isFilterVisible}
+          hasFilters={false}
+          onRefresh={familyId ? fetchData : fetchAllTransactions}
+          onExport={handleExport}
+          isExporting={isExporting}
+        />
+
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <LoadingSpinner />
@@ -192,7 +254,7 @@ export default function FamilyVarisangyaTransactions() {
             </Button>
           </div>
         ) : (
-          <Table columns={columns} data={transactions} emptyMessage="No transactions found" />
+          <Table columns={columns} data={transactions} emptyMessage="No transactions found" showExport={false} />
         )}
       </Card>
     </div>

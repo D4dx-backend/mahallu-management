@@ -15,7 +15,8 @@ import { memberService, Member } from '@/services/memberService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/format';
 import { ROUTES } from '@/constants/routes';
-import { exportToCSV, exportToJSON, exportToPDF } from '@/utils/exportUtils';
+import { exportToCSV, exportToJSON } from '@/utils/exportUtils';
+import { exportInvoicesToPdf, InvoiceDetails } from '@/utils/invoiceUtils';
 
 interface MemberVarisangyaData extends Member {
   totalVarisangya?: number;
@@ -144,7 +145,29 @@ export default function MemberVarisangyaList() {
           exportToJSON(columns, dataToExport, filename);
           break;
         case 'pdf':
-          exportToPDF(columns, dataToExport, filename, title);
+          {
+            const invoices: InvoiceDetails[] = [];
+            for (const member of membersData) {
+              const memberVarisangyas = allVarisangyas.filter(
+                (v) => v.memberId === member.id
+              );
+              
+              for (const entry of memberVarisangyas) {
+                invoices.push({
+                  title: 'Member Varisangya Payment',
+                  receiptNo: entry.receiptNo,
+                  payerLabel: 'Member',
+                  payerName: member.name || '-',
+                  amount: entry.amount,
+                  paymentDate: entry.paymentDate,
+                  paymentMethod: entry.paymentMethod,
+                  remarks: entry.remarks,
+                });
+              }
+            }
+
+            await exportInvoicesToPdf(invoices, `member-varisangya-invoices-${new Date().toISOString().split('T')[0]}`);
+          }
           break;
       }
     } catch (error: any) {
