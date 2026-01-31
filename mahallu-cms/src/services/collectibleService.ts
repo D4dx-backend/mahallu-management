@@ -65,6 +65,14 @@ export const collectibleService = {
     return response.data.data;
   },
 
+  getNextReceiptNo: async (type: 'varisangya' | 'zakat') => {
+    const response = await api.get<{ success: boolean; data: { receiptNo: string } }>(
+      '/collectibles/receipt-next',
+      { params: { type } }
+    );
+    return response.data.data.receiptNo;
+  },
+
   // Zakat
   getAllZakats: async (params?: { search?: string; page?: number; limit?: number }) => {
     const response = await api.get<{ success: boolean; data: Zakat[]; pagination?: any }>('/collectibles/zakat', { params });

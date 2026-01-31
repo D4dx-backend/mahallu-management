@@ -1,7 +1,32 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Varisangya, Zakat, Wallet, Transaction } from '../models/Collectible';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
+
+const getNextReceiptNo = async (Model: typeof Varisangya | typeof Zakat, tenantId: string) => {
+  const normalizedTenantId = mongoose.Types.ObjectId.isValid(tenantId)
+    ? new mongoose.Types.ObjectId(tenantId)
+    : tenantId;
+  const [latest] = await Model.aggregate([
+    {
+      $match: {
+        tenantId: normalizedTenantId,
+        receiptNo: { $regex: /^\d+$/ },
+      },
+    },
+    {
+      $addFields: {
+        receiptNoNum: { $toInt: '$receiptNo' },
+      },
+    },
+    { $sort: { receiptNoNum: -1 } },
+    { $limit: 1 },
+  ]);
+
+  const lastNumber = latest?.receiptNoNum || 14000;
+  return String(lastNumber + 1);
+};
 
 // Varisangya
 export const getAllVarisangyas = async (req: AuthRequest, res: Response) => {
@@ -36,6 +61,28 @@ export const getAllVarisangyas = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getNextReceiptNumber = async (req: AuthRequest, res: Response) => {
+  try {
+    const { type, tenantId } = req.query as { type?: string; tenantId?: string };
+    const finalTenantId = req.tenantId || (tenantId && req.isSuperAdmin ? tenantId : undefined);
+
+    if (!finalTenantId && !req.isSuperAdmin) {
+      return res.status(400).json({ success: false, message: 'Tenant ID is required' });
+    }
+
+    if (type !== 'varisangya' && type !== 'zakat') {
+      return res.status(400).json({ success: false, message: 'Invalid receipt type' });
+    }
+
+    const model = type === 'varisangya' ? Varisangya : Zakat;
+    const receiptNo = await getNextReceiptNo(model, finalTenantId as string);
+
+    res.json({ success: true, data: { receiptNo } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const createVarisangya = async (req: AuthRequest, res: Response) => {
   try {
     const varisangyaData = {
@@ -48,6 +95,10 @@ export const createVarisangya = async (req: AuthRequest, res: Response) => {
         success: false,
         message: 'Tenant ID is required',
       });
+    }
+
+    if (!varisangyaData.receiptNo) {
+      varisangyaData.receiptNo = await getNextReceiptNo(Varisangya, varisangyaData.tenantId);
     }
 
     const varisangya = new Varisangya(varisangyaData);
@@ -137,6 +188,10 @@ export const createZakat = async (req: AuthRequest, res: Response) => {
         success: false,
         message: 'Tenant ID is required',
       });
+    }
+
+    if (!zakatData.receiptNo) {
+      zakatData.receiptNo = await getNextReceiptNo(Zakat, zakatData.tenantId);
     }
 
     const zakat = new Zakat(zakatData);

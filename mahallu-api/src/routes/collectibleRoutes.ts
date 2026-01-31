@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getAllVarisangyas,
+  getNextReceiptNumber,
   createVarisangya,
   getAllZakats,
   createZakat,
@@ -98,6 +99,7 @@ router.use(tenantFilter);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/varisangya', getAllVarisangyas);
+router.get('/receipt-next', getNextReceiptNumber);
 
 /**
  * @swagger

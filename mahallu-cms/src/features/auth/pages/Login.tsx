@@ -224,9 +224,18 @@ export default function Login() {
         )}
 
         <div className="mt-8 text-center">
-          <p className="text-xs text-gray-400 dark:text-gray-600 font-medium">
-          Mahal Connect Mahall Management System v3.1.0
-          </p>
+        <p className="text-xs text-gray-400 dark:text-gray-600 font-medium">
+          Powered by{" "}
+          <a
+            href="https://d4dx.co/"   // put your actual website link here
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline text-primary-600 dark:text-primary-400"
+          >
+            D4DX Innovations LLP
+          </a>
+        </p>
+
         </div>
       </Card>
     </div>

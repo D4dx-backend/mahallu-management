@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiCreditCard, FiDollarSign } from 'react-icons/fi';
+import { FiCreditCard, FiDollarSign, FiEye, FiDownload } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -12,7 +12,10 @@ import TableToolbar from '@/components/ui/TableToolbar';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { collectibleService, Varisangya } from '@/services/collectibleService';
 import { formatDate } from '@/utils/format';
-import { exportToCSV, exportToJSON, exportToPDF } from '@/utils/exportUtils';
+import { exportToCSV, exportToJSON } from '@/utils/exportUtils';
+import { exportInvoicesToPdf, downloadInvoicePdf, InvoiceDetails } from '@/utils/invoiceUtils';
+import { familyService } from '@/services/familyService';
+import { memberService } from '@/services/memberService';
 
 export default function VarisangyaList() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,7 +78,49 @@ export default function VarisangyaList() {
           exportToJSON(columns, dataToExport, filename);
           break;
         case 'pdf':
-          exportToPDF(columns, dataToExport, filename, title);
+          {
+            const familyCache = new Map<string, string>();
+            const memberCache = new Map<string, string>();
+
+            const resolveFamilyName = async (familyId?: string) => {
+              if (!familyId) return '-';
+              if (familyCache.has(familyId)) return familyCache.get(familyId)!;
+              const family = await familyService.getById(familyId);
+              const name = family.houseName || '-';
+              familyCache.set(familyId, name);
+              return name;
+            };
+
+            const resolveMemberName = async (memberId?: string) => {
+              if (!memberId) return '-';
+              if (memberCache.has(memberId)) return memberCache.get(memberId)!;
+              const member = await memberService.getById(memberId);
+              const name = member.name || '-';
+              memberCache.set(memberId, name);
+              return name;
+            };
+
+            const invoices: InvoiceDetails[] = [];
+            for (const entry of dataToExport) {
+              const isMember = Boolean(entry.memberId);
+              const payerName = isMember
+                ? await resolveMemberName(entry.memberId)
+                : await resolveFamilyName(entry.familyId);
+
+              invoices.push({
+                title: title,
+                receiptNo: entry.receiptNo,
+                payerLabel: isMember ? 'Member' : 'Family',
+                payerName,
+                amount: entry.amount,
+                paymentDate: entry.paymentDate,
+                paymentMethod: entry.paymentMethod,
+                remarks: entry.remarks,
+              });
+            }
+
+            await exportInvoicesToPdf(invoices, `varisangya-invoices-${new Date().toISOString().split('T')[0]}`);
+          }
           break;
       }
     } catch (error: any) {
@@ -83,6 +128,31 @@ export default function VarisangyaList() {
       alert(error?.message || 'Failed to export data');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleViewPdf = async (entry: Varisangya) => {
+    try {
+      const isMember = Boolean(entry.memberId);
+      const payerName = isMember
+        ? (await memberService.getById(entry.memberId!)).name
+        : (await familyService.getById(entry.familyId!)).houseName;
+
+      const invoiceDetails: InvoiceDetails = {
+        title: 'Varisangya Payment',
+        receiptNo: entry.receiptNo,
+        payerLabel: isMember ? 'Member' : 'Family',
+        payerName: payerName || '-',
+        amount: entry.amount,
+        paymentDate: entry.paymentDate,
+        paymentMethod: entry.paymentMethod,
+        remarks: entry.remarks,
+      };
+
+      await downloadInvoicePdf(invoiceDetails);
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      alert(error?.message || 'Failed to generate PDF');
     }
   };
 
@@ -99,7 +169,29 @@ export default function VarisangyaList() {
       render: (date) => formatDate(date),
     },
     { key: 'paymentMethod', label: 'Payment Method' },
-    { key: 'receiptNo', label: 'Receipt No.' },
+    {
+      key: 'receiptNo',
+      label: 'Receipt No.',
+      render: (receiptNo) => receiptNo || '-',
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_, row) => (
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewPdf(row);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            title="View/Download PDF"
+          >
+            <FiDownload className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   const totalAmount = varisangyas.reduce((sum, v) => sum + (v.amount || 0), 0);

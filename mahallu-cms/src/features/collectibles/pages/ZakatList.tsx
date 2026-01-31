@@ -13,7 +13,8 @@ import { TableColumn, Pagination as PaginationType } from '@/types';
 import { collectibleService, Zakat } from '@/services/collectibleService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/format';
-import { exportToCSV, exportToJSON, exportToPDF } from '@/utils/exportUtils';
+import { exportToCSV, exportToJSON } from '@/utils/exportUtils';
+import { exportInvoicesToPdf, InvoiceDetails } from '@/utils/invoiceUtils';
 
 export default function ZakatList() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,7 +83,19 @@ export default function ZakatList() {
           exportToJSON(columns, dataToExport, filename);
           break;
         case 'pdf':
-          exportToPDF(columns, dataToExport, filename, title);
+          {
+            const invoices: InvoiceDetails[] = dataToExport.map((entry) => ({
+              title: title,
+              receiptNo: entry.receiptNo,
+              payerLabel: 'Payer',
+              payerName: entry.payerName || '-',
+              amount: entry.amount,
+              paymentDate: entry.paymentDate,
+              paymentMethod: entry.paymentMethod,
+              remarks: entry.remarks,
+            }));
+            await exportInvoicesToPdf(invoices, `zakat-invoices-${new Date().toISOString().split('T')[0]}`);
+          }
           break;
       }
     } catch (error: any) {
@@ -107,7 +120,11 @@ export default function ZakatList() {
       render: (date) => formatDate(date),
     },
     { key: 'category', label: 'Category' },
-    { key: 'receiptNo', label: 'Receipt No.' },
+    {
+      key: 'receiptNo',
+      label: 'Receipt No.',
+      render: (receiptNo) => receiptNo || '-',
+    },
   ];
 
   const totalAmount = zakats.reduce((sum, z) => sum + (z.amount || 0), 0);

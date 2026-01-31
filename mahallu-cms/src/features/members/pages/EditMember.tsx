@@ -188,6 +188,16 @@ export default function EditMember() {
     { value: 'widowed', label: 'Widowed' },
   ];
 
+  const healthStatusOptions = [
+    { value: '', label: 'Select Health Status' },
+    { value: 'healthy', label: 'Healthy' },
+    { value: 'under_treatment', label: 'Under Treatment' },
+    { value: 'chronic', label: 'Chronic Illness' },
+    { value: 'disabled', label: 'Disabled' },
+    { value: 'critical', label: 'Critical' },
+    { value: 'recovering', label: 'Recovering' },
+  ];
+
   const familyOptions = [
     { value: '', label: 'Select family...' },
     ...families.map((family) => ({
@@ -298,10 +308,10 @@ export default function EditMember() {
               placeholder="Phone Number (10 digits)"
               maxLength={10}
             />
-            <Input
+            <Select
               label="Health Status"
               {...register('healthStatus')}
-              placeholder="Health Status"
+              options={healthStatusOptions}
               className="md:col-span-2"
             />
             <Select
