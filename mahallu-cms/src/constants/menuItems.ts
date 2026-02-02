@@ -85,28 +85,8 @@ export const menuItems: MenuItem[] = [
     allowedRoles: ['super_admin', 'mahall'],
     children: [
       { id: 'varisangya', label: 'Varisangyas', icon: FiArchive, path: '/collectibles/varisangya', allowedRoles: ['super_admin', 'mahall'] },
-      {
-        id: 'family-varisangya',
-        label: 'Family Varisangya',
-        icon: FiHome,
-        allowedRoles: ['super_admin', 'mahall'],
-        children: [
-          { id: 'family-list', label: 'List', icon: FiList, path: '/collectibles/family-varisangya', allowedRoles: ['super_admin', 'mahall'] },
-          { id: 'family-transactions', label: 'Transactions', icon: FiActivity, path: '/collectibles/family-varisangya/transactions', allowedRoles: ['super_admin', 'mahall'] },
-          { id: 'family-wallet', label: 'Wallet History', icon: FiCreditCard, path: '/collectibles/family-varisangya/wallet', allowedRoles: ['super_admin', 'mahall'] },
-        ],
-      },
-      {
-        id: 'member-varisangya',
-        label: 'Member Varisangya',
-        icon: FiUser,
-        allowedRoles: ['super_admin', 'mahall'],
-        children: [
-          { id: 'member-list', label: 'List', icon: FiList, path: '/collectibles/member-varisangya', allowedRoles: ['super_admin', 'mahall'] },
-          { id: 'member-transactions', label: 'Transactions', icon: FiActivity, path: '/collectibles/member-varisangya/transactions', allowedRoles: ['super_admin', 'mahall'] },
-          { id: 'member-wallet', label: 'Wallet History', icon: FiCreditCard, path: '/collectibles/member-varisangya/wallet', allowedRoles: ['super_admin', 'mahall'] },
-        ],
-      },
+      { id: 'family-varisangya', label: 'Family Varisangya', icon: FiHome, path: '/collectibles/family-varisangya', allowedRoles: ['super_admin', 'mahall'] },
+      { id: 'member-varisangya', label: 'Member Varisangya', icon: FiUser, path: '/collectibles/member-varisangya', allowedRoles: ['super_admin', 'mahall'] },
       { id: 'zakat', label: 'Zakat', icon: FiGift, path: '/collectibles/zakat', allowedRoles: ['super_admin', 'mahall'] },
       { id: 'all-collections', label: 'All Collections', icon: FiDollarSign, path: '/collections', allowedRoles: ['super_admin', 'mahall'] },
     ],

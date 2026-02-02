@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { FiArrowLeft, FiDollarSign, FiCreditCard, FiCheckCircle } from 'react-icons/fi';
-import Breadcrumb from '@/components/layout/Breadcrumb';
+import { FiDollarSign, FiCreditCard, FiCheckCircle } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import StatCard from '@/components/ui/StatCard';
@@ -9,17 +8,19 @@ import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import TableToolbar from '@/components/ui/TableToolbar';
 import { TableColumn } from '@/types';
-import { collectibleService, Wallet, Transaction } from '@/services/collectibleService';
+import { collectibleService, Wallet } from '@/services/collectibleService';
 import { memberService } from '@/services/memberService';
 import { formatDate } from '@/utils/format';
 import { ROUTES } from '@/constants/routes';
 import { exportToCSV, exportToJSON } from '@/utils/exportUtils';
 import { exportInvoicesToPdf, InvoiceDetails } from '@/utils/invoiceUtils';
 
+const MEMBER_BASE = ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.BASE;
+
 export default function MemberVarisangyaWallet() {
   const [searchParams] = useSearchParams();
   const memberId = searchParams.get('memberId');
-  
+
   const [wallets, setWallets] = useState<(Wallet & { member?: any })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,20 +36,14 @@ export default function MemberVarisangyaWallet() {
     try {
       setLoading(true);
       setError(null);
-
       if (memberId) {
-        // Fetch single member wallet
         const walletData = await collectibleService.getWallet({ memberId });
         const memberData = await memberService.getById(memberId);
-        
         setWallets([{ ...walletData, member: memberData }]);
       } else {
-        // Fetch all member wallets
         const membersResult = await memberService.getAll();
         const members = membersResult.data;
-        
         const walletsData: (Wallet & { member?: any })[] = [];
-        
         for (const member of members) {
           try {
             const walletData = await collectibleService.getWallet({ memberId: member.id });
@@ -59,7 +54,6 @@ export default function MemberVarisangyaWallet() {
             // Skip if wallet doesn't exist
           }
         }
-        
         setWallets(walletsData.sort((a, b) => (b.balance || 0) - (a.balance || 0)));
       }
     } catch (err: any) {
@@ -73,14 +67,11 @@ export default function MemberVarisangyaWallet() {
   const handleExport = async (type: 'csv' | 'json' | 'pdf') => {
     try {
       setIsExporting(true);
-
       if (wallets.length === 0) {
         alert('No data to export');
         return;
       }
-
       const filename = `member-varisangya-wallets${memberId ? `-${memberId}` : ''}`;
-
       switch (type) {
         case 'csv':
           exportToCSV(columns, wallets, filename);
@@ -105,7 +96,6 @@ export default function MemberVarisangyaWallet() {
                 });
               }
             }
-
             await exportInvoicesToPdf(invoices, filename);
           }
           break;
@@ -131,9 +121,7 @@ export default function MemberVarisangyaWallet() {
           >
             {member.name}
           </Link>
-        ) : (
-          '-'
-        ),
+        ) : '-',
     },
     {
       key: 'balance',
@@ -154,7 +142,7 @@ export default function MemberVarisangyaWallet() {
       label: 'Actions',
       render: (_, row) => (
         <Link
-          to={`${ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.TRANSACTIONS}?memberId=${row.member?.id || ''}`}
+          to={`${MEMBER_BASE}?view=transactions&memberId=${row.member?.id || ''}`}
           className="text-primary-600 hover:text-primary-700 dark:text-primary-400"
           title="View Transactions"
         >
@@ -166,7 +154,6 @@ export default function MemberVarisangyaWallet() {
 
   const totalBalance = wallets.reduce((sum, w) => sum + (w.balance || 0), 0);
   const activeWallets = wallets.filter((w) => (w.balance || 0) > 0).length;
-
   const stats = [
     { title: 'Total Wallets', value: wallets.length, icon: <FiCreditCard className="h-5 w-5" /> },
     { title: 'Active Wallets', value: activeWallets, icon: <FiCheckCircle className="h-5 w-5" /> },
@@ -175,42 +162,20 @@ export default function MemberVarisangyaWallet() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              Member Varisangya Wallets
-              {wallets[0]?.member && ` - ${wallets[0].member.name}`}
-            </h1>
-            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-              View wallet balances for members
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link to={ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.LIST}>
-              <Button variant="outline">
-                <FiArrowLeft className="h-4 w-4 mr-2" />
-                Back to List
-              </Button>
-            </Link>
-            <Breadcrumb
-              items={[
-                { label: 'Dashboard', path: '/dashboard' },
-                { label: 'Collectibles', path: ROUTES.COLLECTIBLES.OVERVIEW },
-                { label: 'Member Varisangya', path: ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.LIST },
-                { label: 'Wallet History' },
-              ]}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {stats.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Member Varisangya Wallets
+          {wallets[0]?.member && ` - ${wallets[0].member.name}`}
+        </h2>
+        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+          View wallet balances for members
+        </p>
       </div>
-
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {stats.map((stat, index) => (
+          <StatCard key={index} {...stat} />
+        ))}
+      </div>
       <Card>
         <TableToolbar
           searchQuery={searchQuery}
@@ -222,7 +187,6 @@ export default function MemberVarisangyaWallet() {
           onExport={handleExport}
           isExporting={isExporting}
         />
-
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <LoadingSpinner />
@@ -241,4 +205,3 @@ export default function MemberVarisangyaWallet() {
     </div>
   );
 }
-

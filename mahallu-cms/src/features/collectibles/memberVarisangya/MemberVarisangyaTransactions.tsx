@@ -1,27 +1,39 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { FiArrowLeft } from 'react-icons/fi';
-import Breadcrumb from '@/components/layout/Breadcrumb';
+import { useSearchParams } from 'react-router-dom';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import TableToolbar from '@/components/ui/TableToolbar';
 import { TableColumn } from '@/types';
-import { collectibleService, Transaction, Wallet } from '@/services/collectibleService';
-import { familyService } from '@/services/familyService';
+import { collectibleService, Transaction, Wallet, Varisangya } from '@/services/collectibleService';
+import { memberService } from '@/services/memberService';
 import { formatDate } from '@/utils/format';
-import { ROUTES } from '@/constants/routes';
 import { exportToCSV, exportToJSON } from '@/utils/exportUtils';
 import { exportInvoicesToPdf, InvoiceDetails } from '@/utils/invoiceUtils';
 
-export default function FamilyVarisangyaTransactions() {
+/** Map varisangya payment to transaction-like shape for the table (list shows varisangya, so transactions view must match). */
+function varisangyaToTransaction(v: Varisangya): Transaction {
+  const id = (v as any).id ?? (v as any)._id;
+  return {
+    id: id != null ? String(id) : '',
+    walletId: '',
+    type: 'credit',
+    amount: v.amount ?? 0,
+    description: v.remarks || `Varisangya - ${v.receiptNo || 'N/A'}`,
+    referenceId: v.receiptNo,
+    referenceType: 'varisangya',
+    createdAt: v.paymentDate || v.createdAt || new Date().toISOString(),
+  };
+}
+
+export default function MemberVarisangyaTransactions() {
   const [searchParams] = useSearchParams();
-  const familyId = searchParams.get('familyId');
-  
+  const memberId = searchParams.get('memberId');
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [family, setFamily] = useState<any>(null);
+  const [member, setMember] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -29,32 +41,46 @@ export default function FamilyVarisangyaTransactions() {
   const [isFilterVisible, setIsFilterVisible] = useState(false);
 
   useEffect(() => {
-    if (familyId) {
+    if (memberId) {
       fetchData();
     } else {
       fetchAllTransactions();
     }
-  }, [familyId]);
+  }, [memberId]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Fetch family details
-      if (familyId) {
-        const familyData = await familyService.getById(familyId);
-        setFamily(familyData);
+      if (memberId) {
+        const memberData = await memberService.getById(memberId);
+        setMember(memberData);
       }
+      const walletData = await collectibleService.getWallet({ memberId: memberId || undefined });
+      const walletId = walletData && ((walletData as any).id ?? (walletData as any)._id);
+      setWallet(walletId ? { ...walletData!, id: String(walletId) } as Wallet : null);
 
-      // Fetch wallet
-      const walletData = await collectibleService.getWallet({ familyId: familyId || undefined });
-      setWallet(walletData);
-
-      // Fetch transactions
-      if (walletData?.id) {
-        const transactionsData = await collectibleService.getWalletTransactions(walletData.id);
-        setTransactions(transactionsData);
+      // Prefer wallet transactions (old behavior / transaction page source). Fallback to varisangya when no wallet or no wallet transactions.
+      if (memberId) {
+        if (walletId) {
+          const transactionsList = await collectibleService.getWalletTransactions(String(walletId));
+          if (transactionsList.length > 0) {
+            setTransactions(transactionsList);
+          } else {
+            const varisangyasResult = await collectibleService.getAllVarisangyas({ memberId, limit: 10000 });
+            const list = varisangyasResult.data || [];
+            const mapped = list.map(varisangyaToTransaction).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setTransactions(mapped);
+          }
+        } else {
+          const varisangyasResult = await collectibleService.getAllVarisangyas({ memberId, limit: 10000 });
+          const list = varisangyasResult.data || [];
+          const mapped = list.map(varisangyaToTransaction).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setTransactions(mapped);
+        }
+      } else if (walletId) {
+        const transactionsList = await collectibleService.getWalletTransactions(String(walletId));
+        setTransactions(transactionsList);
       } else {
         setTransactions([]);
       }
@@ -70,28 +96,37 @@ export default function FamilyVarisangyaTransactions() {
     try {
       setLoading(true);
       setError(null);
-      
-      // Fetch all families and their wallets/transactions
-      const familiesResult = await familyService.getAll();
-      const families = familiesResult.data;
-      
+      const membersResult = await memberService.getAll({ limit: 10000 });
+      const members = membersResult.data;
       const allTransactions: Transaction[] = [];
-      
-      for (const fam of families) {
+      for (const mem of members) {
         try {
-          const walletData = await collectibleService.getWallet({ familyId: fam.id });
-          if (walletData?.id) {
-            const transactionsData = await collectibleService.getWalletTransactions(walletData.id);
+          const memId = (mem as any).id ?? (mem as any)._id;
+          if (!memId) continue;
+          const walletData = await collectibleService.getWallet({ memberId: String(memId) });
+          const walletId = walletData && ((walletData as any).id ?? (walletData as any)._id);
+          if (walletId) {
+            const transactionsData = await collectibleService.getWalletTransactions(String(walletId));
             allTransactions.push(...transactionsData);
           }
         } catch (err) {
           // Skip if wallet doesn't exist
         }
       }
-      
-      setTransactions(allTransactions.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ));
+      // Prefer wallet transactions; if none, show all member varisangya (same source as list)
+      if (allTransactions.length > 0) {
+        setTransactions(allTransactions.sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        ));
+      } else {
+        const varisangyasResult = await collectibleService.getAllVarisangyas({ limit: 10000 });
+        const list = varisangyasResult.data || [];
+        const mapped = list
+          .filter((v) => (v as any).memberId != null)
+          .map(varisangyaToTransaction)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setTransactions(mapped);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to fetch transactions');
       console.error('Error fetching transactions:', err);
@@ -103,14 +138,11 @@ export default function FamilyVarisangyaTransactions() {
   const handleExport = async (type: 'csv' | 'json' | 'pdf') => {
     try {
       setIsExporting(true);
-
       if (transactions.length === 0) {
         alert('No data to export');
         return;
       }
-
-      const filename = `family-varisangya-transactions${familyId ? `-${familyId}` : ''}`;
-
+      const filename = `member-varisangya-transactions${memberId ? `-${memberId}` : ''}`;
       switch (type) {
         case 'csv':
           exportToCSV(columns, transactions, filename);
@@ -123,16 +155,15 @@ export default function FamilyVarisangyaTransactions() {
             const invoices: InvoiceDetails[] = transactions
               .filter((t) => t.type === 'credit' && t.referenceType === 'varisangya')
               .map((t) => ({
-                title: 'Family Varisangya Transaction',
+                title: 'Member Varisangya Transaction',
                 receiptNo: t.referenceId || '-',
-                payerLabel: 'Family',
-                payerName: family?.houseName || '-',
+                payerLabel: 'Member',
+                payerName: member?.name || '-',
                 amount: t.amount,
                 paymentDate: t.createdAt,
                 paymentMethod: '-',
                 remarks: t.description,
               }));
-
             await exportInvoicesToPdf(invoices, filename);
           }
           break;
@@ -162,51 +193,22 @@ export default function FamilyVarisangyaTransactions() {
         </span>
       ),
     },
-    {
-      key: 'amount',
-      label: 'Amount',
-      render: (amount) => `₹${amount?.toLocaleString() || 0}`,
-    },
+    { key: 'amount', label: 'Amount', render: (amount) => `₹${amount?.toLocaleString() || 0}` },
     { key: 'description', label: 'Description' },
-    {
-      key: 'referenceType',
-      label: 'Reference',
-      render: (type) => type || '-',
-    },
-    {
-      key: 'createdAt',
-      label: 'Date',
-      render: (date) => formatDate(date),
-    },
+    { key: 'referenceType', label: 'Reference', render: (type) => type || '-' },
+    { key: 'createdAt', label: 'Date', render: (date) => formatDate(date) },
   ];
 
   return (
     <div className="space-y-6">
-      <Breadcrumb
-        items={[
-          { label: 'Dashboard', path: '/dashboard' },
-          { label: 'Collectibles', path: ROUTES.COLLECTIBLES.OVERVIEW },
-          { label: 'Family Varisangya', path: ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.LIST },
-          { label: 'Transactions' },
-        ]}
-      />
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Family Varisangya Transactions
-            {family && ` - ${family.houseName}`}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            View all varisangya transactions{family ? ` for ${family.houseName}` : ''}
-          </p>
-        </div>
-        <Link to={ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.LIST}>
-          <Button variant="outline">
-            <FiArrowLeft className="h-4 w-4 mr-2" />
-            Back to List
-          </Button>
-        </Link>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Member Varisangya Transactions
+          {member && ` - ${member.name}`}
+        </h2>
+        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+          View all varisangya transactions{member ? ` for ${member.name}` : ''}
+        </p>
       </div>
 
       {wallet && (
@@ -215,10 +217,10 @@ export default function FamilyVarisangyaTransactions() {
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Wallet Balance</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                ₹{wallet.balance?.toLocaleString() || 0}
+                ₹{(wallet?.balance ?? 0).toLocaleString()}
               </p>
             </div>
-            {wallet.lastTransactionDate && (
+            {wallet?.lastTransactionDate && (
               <div className="text-right">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Last Transaction</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -237,11 +239,10 @@ export default function FamilyVarisangyaTransactions() {
           onFilterClick={() => setIsFilterVisible(!isFilterVisible)}
           isFilterVisible={isFilterVisible}
           hasFilters={false}
-          onRefresh={familyId ? fetchData : fetchAllTransactions}
+          onRefresh={memberId ? fetchData : fetchAllTransactions}
           onExport={handleExport}
           isExporting={isExporting}
         />
-
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <LoadingSpinner />
@@ -249,7 +250,7 @@ export default function FamilyVarisangyaTransactions() {
         ) : error ? (
           <div className="text-center py-12">
             <p className="text-red-600 dark:text-red-400">{error}</p>
-            <Button onClick={familyId ? fetchData : fetchAllTransactions} className="mt-4" variant="outline">
+            <Button onClick={memberId ? fetchData : fetchAllTransactions} className="mt-4" variant="outline">
               Retry
             </Button>
           </div>
@@ -260,4 +261,3 @@ export default function FamilyVarisangyaTransactions() {
     </div>
   );
 }
-
