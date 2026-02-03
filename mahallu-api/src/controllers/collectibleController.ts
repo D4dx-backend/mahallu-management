@@ -4,6 +4,9 @@ import { Varisangya, Zakat, Wallet, Transaction } from '../models/Collectible';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
 
+const toObjectId = (id: string) =>
+  mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
+
 const getNextReceiptNo = async (Model: typeof Varisangya | typeof Zakat, tenantId: string) => {
   const normalizedTenantId = mongoose.Types.ObjectId.isValid(tenantId)
     ? new mongoose.Types.ObjectId(tenantId)
@@ -31,9 +34,12 @@ const getNextReceiptNo = async (Model: typeof Varisangya | typeof Zakat, tenantI
 // Varisangya
 export const getAllVarisangyas = async (req: AuthRequest, res: Response) => {
   try {
-    const { familyId, memberId, tenantId } = req.query;
+    const { familyId, memberId, tenantId, dateFrom, dateTo } = req.query;
     const { page, limit, skip } = getPaginationParams(req);
     const query: any = {};
+
+    console.log('[Varisangya API] Request URL:', req.originalUrl);
+    console.log('[Varisangya API] req.query:', JSON.stringify(req.query));
 
     // Apply tenant filter - req.tenantId includes x-tenant-id header for super admin viewing as tenant
     if (req.tenantId) {
@@ -45,16 +51,52 @@ export const getAllVarisangyas = async (req: AuthRequest, res: Response) => {
     if (familyId) query.familyId = familyId;
     if (memberId) query.memberId = memberId;
 
+    const fromStr = (Array.isArray(dateFrom) ? dateFrom[0] : dateFrom) as string | undefined;
+    const toStr = (Array.isArray(dateTo) ? dateTo[0] : dateTo) as string | undefined;
+
+    const parseDate = (s: string): { y: number; m: number; d: number } | null => {
+      const parts = s.trim().split('-').map(Number);
+      if (parts.length !== 3 || parts.some((n) => isNaN(n))) return null;
+      const [a, b, c] = parts;
+      if (a > 31 || a >= 1000) return { y: a, m: b, d: c };
+      if (c > 31 || c >= 1000) return { y: c, m: b, d: a };
+      return null;
+    };
+
+    let dateFilter: { $gte?: Date; $lte?: Date } | null = null;
+    if (fromStr || toStr) {
+      const fromParsed = fromStr ? parseDate(fromStr) : null;
+      const toParsed = toStr ? parseDate(toStr) : null;
+      if (fromParsed || toParsed) {
+        dateFilter = {};
+        if (fromParsed) {
+          dateFilter.$gte = new Date(Date.UTC(fromParsed.y, fromParsed.m - 1, fromParsed.d, 0, 0, 0, 0));
+        }
+        if (toParsed) {
+          dateFilter.$lte = new Date(Date.UTC(toParsed.y, toParsed.m - 1, toParsed.d, 23, 59, 59, 999));
+        }
+        console.log('[Varisangya API] Date filter:', { $gte: dateFilter.$gte?.toISOString(), $lte: dateFilter.$lte?.toISOString() });
+      }
+    }
+
+    if (dateFilter) {
+      query.paymentDate = dateFilter;
+    }
+
+    const finalQuery = { ...query };
+    console.log('[Varisangya API] Final query passed to find:', JSON.stringify(finalQuery, (_, v) => (v instanceof Date ? v.toISOString() : v)));
+
     const [varisangyas, total] = await Promise.all([
-      Varisangya.find(query)
+      Varisangya.find(finalQuery)
         .populate('familyId', 'houseName')
-        .populate('memberId', 'name')
+        .populate({ path: 'memberId', select: 'name familyName', populate: { path: 'familyId', select: 'houseName' } })
         .sort({ paymentDate: -1 })
         .skip(skip)
         .limit(limit),
-      Varisangya.countDocuments(query),
+      Varisangya.countDocuments(finalQuery),
     ]);
 
+    console.log('[Varisangya API] Result:', { returned: varisangyas.length, total, sampleDates: varisangyas.slice(0, 2).map((v: any) => v.paymentDate?.toISOString?.()) });
     res.json(createPaginationResponse(varisangyas, total, page, limit));
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -143,6 +185,55 @@ export const createVarisangya = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const updateVarisangya = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body as { amount?: number; paymentDate?: string; paymentMethod?: string; remarks?: string };
+    if (!id || !toObjectId(id)) {
+      return res.status(400).json({ success: false, message: 'Valid varisangya ID is required' });
+    }
+
+    const query: any = { _id: toObjectId(id) };
+    if (req.tenantId) query.tenantId = req.tenantId;
+
+    const existing = await Varisangya.findOne(query);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Varisangya payment not found' });
+    }
+
+    const oldAmount = existing.amount;
+    const newAmount = updates.amount !== undefined ? updates.amount : oldAmount;
+
+    if (updates.amount !== undefined) existing.amount = updates.amount;
+    if (updates.paymentDate !== undefined) existing.paymentDate = new Date(updates.paymentDate);
+    if (updates.paymentMethod !== undefined) existing.paymentMethod = updates.paymentMethod;
+    if (updates.remarks !== undefined) existing.remarks = updates.remarks;
+    await existing.save();
+
+    if (existing.familyId || existing.memberId) {
+      if (newAmount !== oldAmount) {
+        const wallet = await Wallet.findOne({
+          tenantId: existing.tenantId,
+          familyId: existing.familyId,
+          memberId: existing.memberId,
+        });
+        if (wallet) {
+          wallet.balance = (wallet.balance || 0) - oldAmount + newAmount;
+          wallet.lastTransactionDate = existing.paymentDate;
+          await wallet.save();
+        }
+      }
+    }
+
+    const updated = await Varisangya.findById(existing._id)
+      .populate('familyId', 'houseName')
+      .populate({ path: 'memberId', select: 'name familyName', populate: { path: 'familyId', select: 'houseName' } });
+    res.json({ success: true, data: updated });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Zakat
 export const getAllZakats = async (req: AuthRequest, res: Response) => {
   try {
@@ -202,16 +293,31 @@ export const createZakat = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Wallet
+// Wallet – only add tenantId when set; cast familyId/memberId to ObjectId so query matches MongoDB
 export const getWallet = async (req: AuthRequest, res: Response) => {
   try {
-    const { familyId, memberId } = req.query;
-    const query: any = {
-      tenantId: req.tenantId || req.query.tenantId,
-    };
-
-    if (familyId) query.familyId = familyId;
-    if (memberId) query.memberId = memberId;
+    const rawFamilyId = Array.isArray(req.query.familyId) ? req.query.familyId[0] : req.query.familyId;
+    const rawMemberId = Array.isArray(req.query.memberId) ? req.query.memberId[0] : req.query.memberId;
+    const query: any = {};
+    const rawTenantId = req.tenantId || (Array.isArray(req.query.tenantId) ? req.query.tenantId[0] : req.query.tenantId);
+    const tenantIdStr = rawTenantId != null ? String(rawTenantId) : '';
+    if (tenantIdStr) {
+      query.tenantId = mongoose.Types.ObjectId.isValid(tenantIdStr)
+        ? new mongoose.Types.ObjectId(tenantIdStr)
+        : rawTenantId;
+    }
+    const familyIdStr = rawFamilyId != null ? String(rawFamilyId) : '';
+    if (familyIdStr) {
+      query.familyId = mongoose.Types.ObjectId.isValid(familyIdStr)
+        ? new mongoose.Types.ObjectId(familyIdStr)
+        : rawFamilyId;
+    }
+    const memberIdStr = rawMemberId != null ? String(rawMemberId) : '';
+    if (memberIdStr) {
+      query.memberId = mongoose.Types.ObjectId.isValid(memberIdStr)
+        ? new mongoose.Types.ObjectId(memberIdStr)
+        : rawMemberId;
+    }
 
     const wallet = await Wallet.findOne(query);
     if (!wallet) {
@@ -223,10 +329,16 @@ export const getWallet = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Transactions – cast walletId to ObjectId so it matches MongoDB's stored type
 export const getWalletTransactions = async (req: AuthRequest, res: Response) => {
   try {
     const { walletId } = req.params;
-    const transactions = await Transaction.find({ walletId })
+    if (!walletId || !mongoose.Types.ObjectId.isValid(walletId)) {
+      return res.json({ success: true, data: [] });
+    }
+    const transactions = await Transaction.find({
+      walletId: new mongoose.Types.ObjectId(walletId),
+    })
       .sort({ createdAt: -1 });
     res.json({ success: true, data: transactions });
   } catch (error: any) {

@@ -3,8 +3,8 @@ import api from './api';
 export interface Varisangya {
   id: string;
   tenantId?: string;
-  familyId?: string;
-  memberId?: string;
+  familyId?: string | { _id: string; houseName?: string };
+  memberId?: string | { _id: string; name?: string };
   amount: number;
   paymentDate: string;
   paymentMethod?: string;
@@ -51,7 +51,7 @@ export interface Transaction {
 
 export const collectibleService = {
   // Varisangya
-  getAllVarisangyas: async (params?: { familyId?: string; memberId?: string; page?: number; limit?: number }) => {
+  getAllVarisangyas: async (params?: { familyId?: string; memberId?: string; page?: number; limit?: number; dateFrom?: string; dateTo?: string }) => {
     const response = await api.get<{ success: boolean; data: Varisangya[]; pagination?: any }>('/collectibles/varisangya', { params });
     // Handle both paginated and non-paginated responses
     if (response.data.pagination) {
@@ -62,6 +62,11 @@ export const collectibleService = {
 
   createVarisangya: async (data: Partial<Varisangya>) => {
     const response = await api.post<{ success: boolean; data: Varisangya }>('/collectibles/varisangya', data);
+    return response.data.data;
+  },
+
+  updateVarisangya: async (id: string, data: Partial<Pick<Varisangya, 'amount' | 'paymentDate' | 'paymentMethod' | 'remarks'>>) => {
+    const response = await api.put<{ success: boolean; data: Varisangya }>(`/collectibles/varisangya/${id}`, data);
     return response.data.data;
   },
 
@@ -88,17 +93,27 @@ export const collectibleService = {
     return response.data.data;
   },
 
-  // Wallet
+  // Wallet – API returns MongoDB docs with _id; normalize to id for frontend
   getWallet: async (params?: { familyId?: string; memberId?: string }) => {
-    const response = await api.get<{ success: boolean; data: Wallet }>('/collectibles/wallet', { params });
-    return response.data.data;
+    const response = await api.get<{ success: boolean; data: Wallet & { _id?: string } }>('/collectibles/wallet', { params });
+    const data = response.data.data;
+    if (!data) return data;
+    const id = (data as any).id ?? (data as any)._id;
+    const normalizedId = id != null ? String(id) : undefined;
+    return { ...data, id: normalizedId } as Wallet;
   },
 
   getWalletTransactions: async (walletId: string) => {
-    const response = await api.get<{ success: boolean; data: Transaction[] }>(
-      `/collectibles/wallet/${walletId}/transactions`
+    if (!walletId || typeof walletId !== 'string') return [];
+    const response = await api.get<{ success: boolean; data: (Transaction & { _id?: string })[] }>(
+      `/collectibles/wallet/${encodeURIComponent(walletId)}/transactions`
     );
-    return response.data.data;
+    const list = response.data?.data;
+    if (!Array.isArray(list)) return [];
+    return list.map((t) => {
+      const id = (t as any).id ?? (t as any)._id;
+      return { ...t, id: id != null ? String(id) : (t as Transaction).id } as Transaction;
+    });
   },
 };
 

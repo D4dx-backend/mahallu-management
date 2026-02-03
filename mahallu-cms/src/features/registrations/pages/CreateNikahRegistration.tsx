@@ -37,7 +37,6 @@ export default function CreateNikahRegistration() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
-  const [memberSearch, setMemberSearch] = useState('');
   const {
     register,
     handleSubmit,
@@ -55,15 +54,16 @@ export default function CreateNikahRegistration() {
   const selectedMahallMemberId = watch('mahallMemberId') || '';
 
   useEffect(() => {
+    if (!selectedMahallMemberType) {
+      setMembers([]);
+      setValue('mahallMemberId', '');
+      return;
+    }
+    setValue('mahallMemberId', '');
     const fetchMembers = async () => {
-      if (!selectedMahallMemberType) {
-        setMembers([]);
-        return;
-      }
       try {
         const result = await memberService.getAll({
           gender: selectedMahallMemberType === 'groom' ? 'male' : 'female',
-          search: memberSearch || undefined,
           limit: 1000,
         });
         setMembers(result.data || []);
@@ -73,7 +73,7 @@ export default function CreateNikahRegistration() {
       }
     };
     fetchMembers();
-  }, [selectedMahallMemberType, memberSearch]);
+  }, [selectedMahallMemberType, setValue]);
 
   useEffect(() => {
     if (!selectedMahallMemberId) return;
@@ -155,27 +155,19 @@ export default function CreateNikahRegistration() {
               className="md:col-span-2"
             />
             {selectedMahallMemberType && (
-              <>
-                <Input
-                  label="Search Member"
-                  value={memberSearch}
-                  onChange={(e) => setMemberSearch(e.target.value)}
-                  placeholder="Search by name or family"
-                  className="md:col-span-2"
-                />
-                <Select
-                  label="Select Member"
-                  options={[
-                    { value: '', label: 'Select member...' },
-                    ...members.map((member) => ({
-                      value: member.id,
-                      label: `${member.name} (${member.familyName})`,
-                    })),
-                  ]}
-                  {...register('mahallMemberId')}
-                  className="md:col-span-2"
-                />
-              </>
+              <Select
+                label="Search and select member"
+                options={[
+                  { value: '', label: 'Select member...' },
+                  ...members.map((member) => ({
+                    value: member.id,
+                    label: `${member.name} (${member.familyName})`,
+                  })),
+                ]}
+                {...register('mahallMemberId')}
+                placeholder="Click to search and select member"
+                className="md:col-span-2"
+              />
             )}
             <h3 className="md:col-span-2 text-lg font-semibold text-gray-900 dark:text-gray-100">Groom Information</h3>
             <Input

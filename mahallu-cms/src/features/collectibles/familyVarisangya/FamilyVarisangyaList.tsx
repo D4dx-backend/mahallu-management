@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiEye, FiDollarSign, FiHome, FiCreditCard } from 'react-icons/fi';
-import Breadcrumb from '@/components/layout/Breadcrumb';
+import { FiEye, FiDollarSign, FiHome, FiCreditCard, FiDownload } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import StatCard from '@/components/ui/StatCard';
@@ -9,9 +8,10 @@ import Table from '@/components/ui/Table';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Pagination from '@/components/ui/Pagination';
 import TableToolbar from '@/components/ui/TableToolbar';
+import Dropdown, { DropdownItem } from '@/components/ui/Dropdown';
 import { TableColumn, Pagination as PaginationType, Family } from '@/types';
-import { collectibleService, Varisangya } from '@/services/collectibleService';
 import { familyService } from '@/services/familyService';
+import { collectibleService } from '@/services/collectibleService';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/format';
 import { ROUTES } from '@/constants/routes';
@@ -24,6 +24,8 @@ interface FamilyVarisangyaData extends Family {
   lastPaymentDate?: string;
 }
 
+const FAMILY_BASE = ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.BASE;
+
 export default function FamilyVarisangyaList() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -32,6 +34,7 @@ export default function FamilyVarisangyaList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportingRowId, setExportingRowId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [pagination, setPagination] = useState<PaginationType | null>(null);
@@ -46,8 +49,7 @@ export default function FamilyVarisangyaList() {
     try {
       setLoading(true);
       setError(null);
-      
-      // Fetch families
+
       const params: any = {
         page: currentPage,
         limit: itemsPerPage,
@@ -55,29 +57,25 @@ export default function FamilyVarisangyaList() {
       if (debouncedSearch) {
         params.search = debouncedSearch;
       }
-      
+
       const familiesResult = await familyService.getAll(params);
       const familiesData = familiesResult.data;
-      
-      // Fetch varisangyas for all families
       const varisangyasResult = await collectibleService.getAllVarisangyas();
       const allVarisangyas = varisangyasResult.data;
-      
-      // Calculate varisangya totals for each family
+
+      const getFamilyId = (v: any) => (typeof v.familyId === 'object' && v.familyId != null ? (v.familyId as any)._id : v.familyId);
       const familiesWithVarisangya = familiesData.map((family) => {
+        const fid = (family as any).id ?? (family as any)._id;
         const familyVarisangyas = allVarisangyas.filter(
-          (v) => v.familyId === family.id
+          (v) => getFamilyId(v) === fid
         );
-        
         const totalVarisangya = familyVarisangyas.reduce(
           (sum, v) => sum + (v.amount || 0),
           0
         );
-        
         const lastPayment = familyVarisangyas.sort(
           (a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
         )[0];
-        
         return {
           ...family,
           totalVarisangya,
@@ -85,7 +83,7 @@ export default function FamilyVarisangyaList() {
           lastPaymentDate: lastPayment?.paymentDate,
         };
       });
-      
+
       setFamilies(familiesWithVarisangya);
       if (familiesResult.pagination) {
         setPagination(familiesResult.pagination);
@@ -101,15 +99,12 @@ export default function FamilyVarisangyaList() {
   const handleExport = async (type: 'csv' | 'json' | 'pdf') => {
     try {
       setIsExporting(true);
-      
       const params: any = { limit: 10000 };
       if (debouncedSearch) params.search = debouncedSearch;
-      
       const familiesResult = await familyService.getAll(params);
       const familiesData = familiesResult.data;
       const varisangyasResult = await collectibleService.getAllVarisangyas();
       const allVarisangyas = varisangyasResult.data;
-      
       const dataToExport = familiesData.map((family) => {
         const familyVarisangyas = allVarisangyas.filter(
           (v) => v.familyId === family.id
@@ -128,21 +123,16 @@ export default function FamilyVarisangyaList() {
           lastPaymentDate: lastPayment?.paymentDate,
         };
       });
-
       if (dataToExport.length === 0) {
         alert('No data to export');
         return;
       }
-
-      const filename = 'family-varisangya';
-      const title = 'Family Varisangya';
-
       switch (type) {
         case 'csv':
-          exportToCSV(columns, dataToExport, filename);
+          exportToCSV(columns, dataToExport, 'family-varisangya');
           break;
         case 'json':
-          exportToJSON(columns, dataToExport, filename);
+          exportToJSON(columns, dataToExport, 'family-varisangya');
           break;
         case 'pdf':
           {
@@ -151,7 +141,6 @@ export default function FamilyVarisangyaList() {
               const familyVarisangyas = allVarisangyas.filter(
                 (v) => v.familyId === family.id
               );
-              
               for (const entry of familyVarisangyas) {
                 invoices.push({
                   title: 'Family Varisangya Payment',
@@ -165,7 +154,6 @@ export default function FamilyVarisangyaList() {
                 });
               }
             }
-
             await exportInvoicesToPdf(invoices, `family-varisangya-invoices-${new Date().toISOString().split('T')[0]}`);
           }
           break;
@@ -175,6 +163,49 @@ export default function FamilyVarisangyaList() {
       alert(error?.message || 'Failed to export data');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExportRow = async (row: FamilyVarisangyaData, type: 'csv' | 'json' | 'pdf') => {
+    try {
+      setExportingRowId(row.id);
+      const filename = `family-varisangya-${(row.houseName || row.id).replace(/\s+/g, '-')}`;
+      const singleRow = [row];
+
+      switch (type) {
+        case 'csv':
+          exportToCSV(columns, singleRow, filename);
+          break;
+        case 'json':
+          exportToJSON(columns, singleRow, filename);
+          break;
+        case 'pdf':
+          {
+            const varisangyasResult = await collectibleService.getAllVarisangyas({ familyId: row.id });
+            const familyVarisangyas = varisangyasResult.data || [];
+            if (familyVarisangyas.length === 0) {
+              alert('No payment records to export for this family');
+              return;
+            }
+            const invoices: InvoiceDetails[] = familyVarisangyas.map((entry: any) => ({
+              title: 'Family Varisangya Payment',
+              receiptNo: entry.receiptNo || '-',
+              payerLabel: 'Family',
+              payerName: row.houseName || '-',
+              amount: entry.amount,
+              paymentDate: entry.paymentDate,
+              paymentMethod: entry.paymentMethod || '-',
+              remarks: entry.remarks || '',
+            }));
+            await exportInvoicesToPdf(invoices, filename);
+          }
+          break;
+      }
+    } catch (error: any) {
+      console.error('Row export error:', error);
+      alert(error?.message || 'Failed to export');
+    } finally {
+      setExportingRowId(null);
     }
   };
 
@@ -216,7 +247,7 @@ export default function FamilyVarisangyaList() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`${ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.TRANSACTIONS}?familyId=${row.id}`);
+              navigate(`${FAMILY_BASE}?view=transactions&familyId=${row.id}`);
             }}
             className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
             title="View Transactions"
@@ -226,13 +257,35 @@ export default function FamilyVarisangyaList() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`${ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.WALLET}?familyId=${row.id}`);
+              navigate(`${FAMILY_BASE}?view=wallet&familyId=${row.id}`);
             }}
             className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
             title="View Wallet"
           >
             <FiDollarSign className="h-4 w-4" />
           </button>
+          <Dropdown
+            align="right"
+            trigger={
+              <button
+                onClick={(e) => e.stopPropagation()}
+                disabled={exportingRowId === row.id}
+                className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors disabled:opacity-50"
+                title="Export"
+              >
+                {exportingRowId === row.id ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  <FiDownload className="h-4 w-4" />
+                )}
+              </button>
+            }
+            items={[
+              { label: 'Export as CSV', onClick: () => handleExportRow(row, 'csv') },
+              { label: 'Export as JSON', onClick: () => handleExportRow(row, 'json') },
+              { label: 'Export as PDF', onClick: () => handleExportRow(row, 'pdf') },
+            ]}
+          />
         </div>
       ),
     },
@@ -240,7 +293,6 @@ export default function FamilyVarisangyaList() {
 
   const totalAmount = families.reduce((sum, f) => sum + (f.totalVarisangya || 0), 0);
   const totalPayments = families.reduce((sum, f) => sum + (f.varisangyaCount || 0), 0);
-
   const stats = [
     { title: 'Total Families', value: pagination?.total || families.length, icon: <FiHome className="h-5 w-5" /> },
     { title: 'Total Payments', value: totalPayments, icon: <FiCreditCard className="h-5 w-5" /> },
@@ -249,28 +301,11 @@ export default function FamilyVarisangyaList() {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Family Varisangya</h1>
-            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">View varisangya payments by family</p>
-          </div>
-          <Breadcrumb
-            items={[
-              { label: 'Dashboard', path: '/dashboard' },
-              { label: 'Collectibles', path: ROUTES.COLLECTIBLES.OVERVIEW },
-              { label: 'Family Varisangya' },
-            ]}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {stats.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {stats.map((stat, index) => (
+          <StatCard key={index} {...stat} />
+        ))}
       </div>
-
       <Card>
         <TableToolbar
           searchQuery={searchQuery}
@@ -282,7 +317,6 @@ export default function FamilyVarisangyaList() {
           onExport={handleExport}
           isExporting={isExporting}
         />
-
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <LoadingSpinner />
@@ -297,7 +331,6 @@ export default function FamilyVarisangyaList() {
         ) : (
           <Table columns={columns} data={families} emptyMessage="No families found" showExport={false} />
         )}
-
         {pagination && (
           <div className="mt-4">
             <Pagination
@@ -305,9 +338,7 @@ export default function FamilyVarisangyaList() {
               totalPages={pagination.totalPages}
               totalItems={pagination.total}
               itemsPerPage={pagination.limit}
-              onPageChange={(page) => {
-                setCurrentPage(page);
-              }}
+              onPageChange={(page) => setCurrentPage(page)}
             />
           </div>
         )}
@@ -315,4 +346,3 @@ export default function FamilyVarisangyaList() {
     </div>
   );
 }
-
