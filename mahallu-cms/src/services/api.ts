@@ -61,7 +61,19 @@ const transformId = (data: any): any => {
         };
         delete transformed[key]._id;
       } else if (key === 'familyId' && data[key] && typeof data[key] === 'object' && data[key]._id) {
-        transformed[key] = data[key]._id.toString();
+        const ref = data[key];
+        if (ref.houseName !== undefined) {
+          transformed[key] = transformId(ref);
+        } else {
+          transformed[key] = ref._id.toString();
+        }
+      } else if (key === 'memberId' && data[key] && typeof data[key] === 'object' && data[key]._id) {
+        const ref = data[key];
+        if (ref.name !== undefined || ref.familyName !== undefined || ref.familyId) {
+          transformed[key] = transformId(ref);
+        } else {
+          transformed[key] = ref._id.toString();
+        }
       } else {
         transformed[key] = transformId(data[key]);
       }

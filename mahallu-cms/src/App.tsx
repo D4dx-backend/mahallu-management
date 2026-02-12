@@ -49,12 +49,8 @@ import EditNOC from './features/registrations/pages/EditNOC';
 import CollectionsOverview from './features/collectibles/pages/CollectionsOverview';
 import VarisangyaList from './features/collectibles/pages/VarisangyaList';
 import CreateVarisangya from './features/collectibles/pages/CreateVarisangya';
-import FamilyVarisangyaList from './features/collectibles/pages/FamilyVarisangyaList';
-import FamilyVarisangyaTransactions from './features/collectibles/pages/FamilyVarisangyaTransactions';
-import FamilyVarisangyaWallet from './features/collectibles/pages/FamilyVarisangyaWallet';
-import MemberVarisangyaList from './features/collectibles/pages/MemberVarisangyaList';
-import MemberVarisangyaTransactions from './features/collectibles/pages/MemberVarisangyaTransactions';
-import MemberVarisangyaWallet from './features/collectibles/pages/MemberVarisangyaWallet';
+import FamilyVarisangyaPage from './features/collectibles/familyVarisangya/FamilyVarisangyaPage';
+import MemberVarisangyaPage from './features/collectibles/memberVarisangya/MemberVarisangyaPage';
 import ZakatList from './features/collectibles/pages/ZakatList';
 import CreateZakat from './features/collectibles/pages/CreateZakat';
 import AreaReport from './features/reports/pages/AreaReport';
@@ -699,61 +695,21 @@ function App() {
           }
         />
         <Route
-          path={ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.LIST}
+          path={ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.BASE}
           element={
             <ProtectedRoute>
               <MainLayout>
-                <FamilyVarisangyaList />
+                <FamilyVarisangyaPage />
               </MainLayout>
             </ProtectedRoute>
           }
         />
         <Route
-          path={ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.TRANSACTIONS}
+          path={ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.BASE}
           element={
             <ProtectedRoute>
               <MainLayout>
-                <FamilyVarisangyaTransactions />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.COLLECTIBLES.FAMILY_VARISANGYA.WALLET}
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <FamilyVarisangyaWallet />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.LIST}
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <MemberVarisangyaList />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.TRANSACTIONS}
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <MemberVarisangyaTransactions />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path={ROUTES.COLLECTIBLES.MEMBER_VARISANGYA.WALLET}
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <MemberVarisangyaWallet />
+                <MemberVarisangyaPage />
               </MainLayout>
             </ProtectedRoute>
           }

@@ -25,6 +25,20 @@ export const createVarisangyaValidation = [
   body('remarks').optional().trim(),
 ];
 
+export const updateVarisangyaValidation = [
+  param('id').isMongoId().withMessage('Invalid varisangya ID'),
+  body('amount')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number'),
+  body('paymentDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Payment date must be a valid date'),
+  body('paymentMethod').optional().trim(),
+  body('remarks').optional().trim(),
+];
+
 // Zakat Validations
 export const createZakatValidation = [
   body('payerName')

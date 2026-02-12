@@ -11,6 +11,7 @@ export default function TenantSwitcher() {
   const [currentTenant, setCurrentTenantData] = useState<Tenant | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -21,6 +22,12 @@ export default function TenantSwitcher() {
       loadTenants();
     }
   }, [isSuperAdmin]);
+
+  useEffect(() => {
+    if (isSuperAdmin && isOpen) {
+      loadTenants();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (currentTenantId && tenants.length > 0) {
@@ -52,11 +59,13 @@ export default function TenantSwitcher() {
   const loadTenants = async () => {
     try {
       setIsLoading(true);
-      const response = await tenantService.getAll({ status: 'active' });
+      setLoadError(null);
+      const response = await tenantService.getAll({ limit: 500 });
       setTenants(response.data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading tenants:', error);
       setTenants([]);
+      setLoadError(error?.response?.data?.message || 'Failed to load tenants');
     } finally {
       setIsLoading(false);
     }
@@ -149,9 +158,14 @@ export default function TenantSwitcher() {
           <div className="overflow-y-auto max-h-[400px]">
             {isLoading ? (
               <div className="px-4 py-8 text-sm text-gray-500 text-center">Loading...</div>
+            ) : loadError ? (
+              <div className="px-4 py-8 text-sm text-red-600 dark:text-red-400 text-center">
+                {loadError}
+                <p className="mt-2 text-gray-500 dark:text-gray-400">Check that you are logged in as Super Admin.</p>
+              </div>
             ) : filteredTenants.length === 0 ? (
               <div className="px-4 py-8 text-sm text-gray-500 text-center">
-                {searchQuery ? 'No tenants found matching your search' : 'No tenants available'}
+                {searchQuery ? 'No tenants found matching your search' : 'No tenants available. Create a tenant first.'}
               </div>
             ) : (
               <div className="space-y-1 py-1">

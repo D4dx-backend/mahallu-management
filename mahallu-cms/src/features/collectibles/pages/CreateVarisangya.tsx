@@ -171,12 +171,20 @@ export default function CreateVarisangya() {
       return;
     }
 
+    const { currentTenantId, user } = useAuthStore.getState();
+    const tenantId = extractTenantId(user, currentTenantId);
+    if (!tenantId) {
+      setSubmitError('Tenant context is required. Please log in again or select a tenant.');
+      return;
+    }
+
     try {
       setSubmitError(null);
       clearErrors('familyIds');
       setCreatedInvoices([]);
 
       const payloadBase = {
+        tenantId,
         amount: data.amount,
         paymentDate: data.paymentDate,
         paymentMethod: data.paymentMethod,
@@ -227,9 +235,16 @@ export default function CreateVarisangya() {
     }
   };
 
+  const getMemberFamilyId = (member: Member): string => {
+    const f = member.familyId;
+    if (typeof f === 'string') return f;
+    if (f && typeof f === 'object') return (f as { id?: string }).id ?? String((f as { _id?: unknown })._id ?? '');
+    return '';
+  };
+
   const filteredMembers = useMemo(() => {
     if (selectedFamilyIds.length === 0) return members;
-    return members.filter((member) => selectedFamilyIds.includes(member.familyId));
+    return members.filter((member) => selectedFamilyIds.includes(getMemberFamilyId(member)));
   }, [members, selectedFamilyIds]);
 
   return (

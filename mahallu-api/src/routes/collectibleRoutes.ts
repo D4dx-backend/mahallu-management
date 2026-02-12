@@ -3,6 +3,7 @@ import {
   getAllVarisangyas,
   getNextReceiptNumber,
   createVarisangya,
+  updateVarisangya,
   getAllZakats,
   createZakat,
   getWallet,
@@ -13,6 +14,7 @@ import { tenantMiddleware, tenantFilter } from '../middleware/tenantMiddleware';
 import { validationHandler } from '../middleware/validationHandler';
 import {
   createVarisangyaValidation,
+  updateVarisangyaValidation,
   createZakatValidation,
   getWalletTransactionsValidation,
 } from '../validations/collectibleValidation';
@@ -155,6 +157,7 @@ router.get('/receipt-next', getNextReceiptNumber);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.post('/varisangya', createVarisangyaValidation, validationHandler, createVarisangya);
+router.put('/varisangya/:id', updateVarisangyaValidation, validationHandler, updateVarisangya);
 
 /**
  * @swagger
