@@ -61,6 +61,7 @@ import AreaReport from './features/reports/pages/AreaReport';
 import BloodBankReport from './features/reports/pages/BloodBankReport';
 import OrphansReport from './features/reports/pages/OrphansReport';
 import BannersList from './features/social/pages/BannersList';
+import CreateBanner from './features/social/pages/CreateBanner';
 import FeedsList from './features/social/pages/FeedsList';
 import ActivityLogsList from './features/social/pages/ActivityLogsList';
 import SupportList from './features/social/pages/SupportList';
@@ -789,6 +790,16 @@ function App() {
           }
         />
         {/* Social Routes */}
+        <Route
+          path={ROUTES.SOCIAL.CREATE_BANNER}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CreateBanner />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path={ROUTES.SOCIAL.BANNERS}
           element={
