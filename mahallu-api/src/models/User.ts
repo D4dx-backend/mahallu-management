@@ -7,6 +7,7 @@ export interface IUser extends Document {
   role: 'super_admin' | 'mahall' | 'survey' | 'institute' | 'member';
   tenantId?: mongoose.Types.ObjectId; // null for super admin
   memberId?: mongoose.Types.ObjectId; // Reference to Member for member users
+  instituteId?: mongoose.Types.ObjectId; // Reference to Institute for institute users
   status: 'active' | 'inactive';
   joiningDate: Date;
   lastLogin?: Date;
@@ -52,6 +53,11 @@ const UserSchema = new Schema<IUser>(
     memberId: {
       type: Schema.Types.ObjectId,
       ref: 'Member',
+      default: null,
+    },
+    instituteId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Institute',
       default: null,
     },
     status: {

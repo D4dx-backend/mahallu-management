@@ -1,5 +1,5 @@
 import express from 'express';
-import { getDashboardStats, getRecentFamilies, getActivityTimeline } from '../controllers/dashboardController';
+import { getDashboardStats, getRecentFamilies, getActivityTimeline, getFinancialSummary } from '../controllers/dashboardController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { tenantMiddleware } from '../middleware/tenantMiddleware';
 
@@ -117,6 +117,7 @@ router.get('/activity-timeline', getActivityTimeline);
  *         description: Internal server error
  */
 router.get('/stats', getDashboardStats);
+router.get('/financial-summary', getFinancialSummary);
 
 export default router;
 

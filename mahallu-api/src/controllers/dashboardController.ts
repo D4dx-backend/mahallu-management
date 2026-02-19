@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import User from '../models/User';
 import Family from '../models/Family';
 import Member from '../models/Member';
+import { LedgerItem, InstituteAccount } from '../models/MasterAccount';
 import { AuthRequest } from '../middleware/authMiddleware';
+import mongoose from 'mongoose';
 
 export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {
@@ -160,3 +162,62 @@ export const getActivityTimeline = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getFinancialSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const tenantId = req.tenantId;
+    const matchQuery: any = {};
+    if (tenantId) matchQuery.tenantId = new mongoose.Types.ObjectId(tenantId);
+
+    // Current month range
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const monthMatch = {
+      ...matchQuery,
+      date: { $gte: monthStart, $lte: monthEnd },
+    };
+
+    // Monthly totals
+    const monthlyResult = await LedgerItem.aggregate([
+      { $match: monthMatch },
+      { $lookup: { from: 'ledgers', localField: 'ledgerId', foreignField: '_id', as: 'ledger' } },
+      { $unwind: '$ledger' },
+      {
+        $group: {
+          _id: null,
+          totalIncome: { $sum: { $cond: [{ $eq: ['$ledger.type', 'income'] }, '$amount', 0] } },
+          totalExpense: { $sum: { $cond: [{ $eq: ['$ledger.type', 'expense'] }, '$amount', 0] } },
+          transactionCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const monthly = monthlyResult[0] || { totalIncome: 0, totalExpense: 0, transactionCount: 0 };
+
+    // Bank balance
+    const bankQuery: any = { status: 'active' };
+    if (tenantId) bankQuery.tenantId = new mongoose.Types.ObjectId(tenantId);
+
+    const bankResult = await InstituteAccount.aggregate([
+      { $match: bankQuery },
+      { $group: { _id: null, totalBalance: { $sum: '$balance' }, accountCount: { $sum: 1 } } },
+    ]);
+
+    const bank = bankResult[0] || { totalBalance: 0, accountCount: 0 };
+
+    res.json({
+      success: true,
+      data: {
+        monthlyIncome: monthly.totalIncome,
+        monthlyExpense: monthly.totalExpense,
+        monthlyNet: monthly.totalIncome - monthly.totalExpense,
+        transactionCount: monthly.transactionCount,
+        totalBankBalance: bank.totalBalance,
+        bankAccountCount: bank.accountCount,
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

@@ -15,6 +15,7 @@ export interface IInstituteAccount extends Document {
 
 export interface ICategory extends Document {
   tenantId: mongoose.Types.ObjectId;
+  instituteId?: mongoose.Types.ObjectId;
   name: string;
   description?: string;
   type: 'income' | 'expense';
@@ -33,6 +34,7 @@ export interface IMasterWallet extends Document {
 
 export interface ILedger extends Document {
   tenantId: mongoose.Types.ObjectId;
+  instituteId?: mongoose.Types.ObjectId;
   name: string;
   description?: string;
   type: 'income' | 'expense';
@@ -42,13 +44,17 @@ export interface ILedger extends Document {
 
 export interface ILedgerItem extends Document {
   tenantId: mongoose.Types.ObjectId;
+  instituteId?: mongoose.Types.ObjectId;
   ledgerId: mongoose.Types.ObjectId;
   date: Date;
   amount: number;
+  type: 'income' | 'expense';
   description: string;
   categoryId?: mongoose.Types.ObjectId;
   paymentMethod?: string;
   referenceNo?: string;
+  source?: 'manual' | 'salary' | 'varisangya' | 'zakat' | 'petty_cash';
+  sourceId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,6 +94,11 @@ const CategorySchema = new Schema<ICategory>(
       required: true,
       index: true,
     },
+    instituteId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Institute',
+      default: null,
+    },
     name: { type: String, required: true, trim: true },
     description: String,
     type: {
@@ -126,6 +137,11 @@ const LedgerSchema = new Schema<ILedger>(
       required: true,
       index: true,
     },
+    instituteId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Institute',
+      default: null,
+    },
     name: { type: String, required: true, trim: true },
     description: String,
     type: {
@@ -145,6 +161,11 @@ const LedgerItemSchema = new Schema<ILedgerItem>(
       required: true,
       index: true,
     },
+    instituteId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Institute',
+      default: null,
+    },
     ledgerId: {
       type: Schema.Types.ObjectId,
       ref: 'Ledger',
@@ -152,10 +173,21 @@ const LedgerItemSchema = new Schema<ILedgerItem>(
     },
     date: { type: Date, required: true },
     amount: { type: Number, required: true, min: 0 },
+    type: {
+      type: String,
+      enum: ['income', 'expense'],
+      required: true,
+    },
     description: { type: String, required: true },
     categoryId: { type: Schema.Types.ObjectId, ref: 'Category' },
     paymentMethod: String,
     referenceNo: String,
+    source: {
+      type: String,
+      enum: ['manual', 'salary', 'varisangya', 'zakat', 'petty_cash'],
+      default: 'manual',
+    },
+    sourceId: { type: Schema.Types.ObjectId },
   },
   { timestamps: true }
 );

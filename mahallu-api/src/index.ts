@@ -13,7 +13,9 @@ import familyRoutes from './routes/familyRoutes';
 import memberRoutes from './routes/memberRoutes';
 import instituteRoutes from './routes/instituteRoutes';
 import programRoutes from './routes/programRoutes';
-import madrasaRoutes from './routes/madrasaRoutes';
+import employeeRoutes from './routes/employeeRoutes';
+import salaryRoutes from './routes/salaryRoutes';
+import accountingReportRoutes from './routes/accountingReportRoutes';
 import committeeRoutes from './routes/committeeRoutes';
 import meetingRoutes from './routes/meetingRoutes';
 import registrationRoutes from './routes/registrationRoutes';
@@ -24,6 +26,8 @@ import notificationRoutes from './routes/notificationRoutes';
 import masterAccountRoutes from './routes/masterAccountRoutes';
 import tenantRoutes from './routes/tenantRoutes';
 import memberUserRoutes from './routes/memberUserRoutes';
+import assetRoutes from './routes/assetRoutes';
+import pettyCashRoutes from './routes/pettyCashRoutes';
 import path from 'path';
 
 // Load environment variables from the correct path
@@ -109,7 +113,9 @@ app.use('/api/families', familyRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/institutes', instituteRoutes);
 app.use('/api/programs', programRoutes);
-app.use('/api/madrasa', madrasaRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/salary-payments', salaryRoutes);
+app.use('/api/accounting-reports', accountingReportRoutes);
 app.use('/api/committees', committeeRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/registrations', registrationRoutes);
@@ -119,6 +125,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/master-accounts', masterAccountRoutes);
 app.use('/api/member-user', memberUserRoutes);
+app.use('/api/assets', assetRoutes);
+app.use('/api/petty-cash', pettyCashRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);

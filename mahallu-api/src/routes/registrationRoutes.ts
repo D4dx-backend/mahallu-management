@@ -3,9 +3,11 @@ import {
   getAllNikahRegistrations,
   getNikahRegistrationById,
   createNikahRegistration,
+  updateNikahRegistration,
   getAllDeathRegistrations,
   getDeathRegistrationById,
   createDeathRegistration,
+  updateDeathRegistration,
   getAllNOCs,
   getNOCById,
   createNOC,
@@ -17,8 +19,10 @@ import { validationHandler } from '../middleware/validationHandler';
 import {
   createNikahRegistrationValidation,
   getNikahRegistrationValidation,
+  updateNikahRegistrationValidation,
   createDeathRegistrationValidation,
   getDeathRegistrationValidation,
+  updateDeathRegistrationValidation,
   createNOCValidation,
   updateNOCValidation,
   getNOCValidation,
@@ -211,6 +215,42 @@ router.post('/nikah', createNikahRegistrationValidation, validationHandler, crea
 
 /**
  * @swagger
+ * /registrations/nikah/{id}:
+ *   put:
+ *     summary: Update Nikah registration
+ *     tags: [Registrations]
+ *     description: |
+ *       Update an existing Nikah registration.
+ *       **Access:** Super Admin (all tenants), Mahall Admin (own tenant)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the Nikah registration
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateNikahRegistrationRequest'
+ *     responses:
+ *       200:
+ *         description: Nikah registration updated successfully
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.put('/nikah/:id', updateNikahRegistrationValidation, validationHandler, updateNikahRegistration);
+
+/**
+ * @swagger
  * /registrations/death:
  *   get:
  *     summary: Get all Death registrations
@@ -383,6 +423,42 @@ router.get('/death/:id', getDeathRegistrationValidation, validationHandler, getD
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.post('/death', createDeathRegistrationValidation, validationHandler, createDeathRegistration);
+
+/**
+ * @swagger
+ * /registrations/death/{id}:
+ *   put:
+ *     summary: Update Death registration
+ *     tags: [Registrations]
+ *     description: |
+ *       Update an existing Death registration.
+ *       **Access:** Super Admin (all tenants), Mahall Admin (own tenant)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: MongoDB ObjectId of the Death registration
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateDeathRegistrationRequest'
+ *     responses:
+ *       200:
+ *         description: Death registration updated successfully
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ */
+router.put('/death/:id', updateDeathRegistrationValidation, validationHandler, updateDeathRegistration);
 
 /**
  * @swagger

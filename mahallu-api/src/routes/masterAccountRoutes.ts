@@ -2,17 +2,27 @@ import express from 'express';
 import {
   getAllInstituteAccounts,
   createInstituteAccount,
+  updateInstituteAccount,
+  deleteInstituteAccount,
   getAllCategories,
   createCategory,
+  updateCategory,
+  deleteCategory,
   getAllWallets,
   createWallet,
+  updateWallet,
+  deleteWallet,
   getAllLedgers,
   createLedger,
+  updateLedger,
+  deleteLedger,
   getLedgerItems,
   createLedgerItem,
+  updateLedgerItem,
+  deleteLedgerItem,
 } from '../controllers/masterAccountController';
 import { authMiddleware } from '../middleware/authMiddleware';
-import { tenantMiddleware, tenantFilter } from '../middleware/tenantMiddleware';
+import { tenantMiddleware, tenantFilter, instituteFilter } from '../middleware/tenantMiddleware';
 import { validationHandler } from '../middleware/validationHandler';
 import {
   createInstituteAccountValidation,
@@ -20,6 +30,12 @@ import {
   createWalletValidation,
   createLedgerValidation,
   createLedgerItemValidation,
+  updateInstituteAccountValidation,
+  updateCategoryValidation,
+  updateWalletValidation,
+  updateLedgerValidation,
+  updateLedgerItemValidation,
+  idParamValidation,
 } from '../validations/masterAccountValidation';
 
 const router = express.Router();
@@ -27,6 +43,7 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 router.use(tenantFilter);
+router.use(instituteFilter);
 
 /**
  * @swagger
@@ -981,6 +998,20 @@ router.get('/ledger-items', getLedgerItems);
  *         description: Ledger not found
  */
 router.post('/ledger-items', createLedgerItemValidation, validationHandler, createLedgerItem);
+
+// ============ UPDATE ROUTES ============
+router.put('/institute/:id', updateInstituteAccountValidation, validationHandler, updateInstituteAccount);
+router.put('/categories/:id', updateCategoryValidation, validationHandler, updateCategory);
+router.put('/wallets/:id', updateWalletValidation, validationHandler, updateWallet);
+router.put('/ledgers/:id', updateLedgerValidation, validationHandler, updateLedger);
+router.put('/ledger-items/:id', updateLedgerItemValidation, validationHandler, updateLedgerItem);
+
+// ============ DELETE ROUTES ============
+router.delete('/institute/:id', idParamValidation, validationHandler, deleteInstituteAccount);
+router.delete('/categories/:id', idParamValidation, validationHandler, deleteCategory);
+router.delete('/wallets/:id', idParamValidation, validationHandler, deleteWallet);
+router.delete('/ledgers/:id', idParamValidation, validationHandler, deleteLedger);
+router.delete('/ledger-items/:id', idParamValidation, validationHandler, deleteLedgerItem);
 
 export default router;
 

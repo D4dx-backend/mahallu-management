@@ -84,6 +84,43 @@ export const createNikahRegistration = async (req: AuthRequest, res: Response) =
   }
 };
 
+export const updateNikahRegistration = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      groomName, groomAge, groomId, brideName, brideAge, brideId,
+      mahallMemberType, nikahDate, mahallId, waliName, witness1, witness2,
+      mahrAmount, mahrDescription, status, remarks,
+    } = req.body;
+
+    const registration = await NikahRegistration.findById(id);
+    if (!registration) {
+      return res.status(404).json({ success: false, message: 'Nikah registration not found' });
+    }
+
+    // Check tenant access
+    if (!req.isSuperAdmin && registration.tenantId.toString() !== req.tenantId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const updated = await NikahRegistration.findByIdAndUpdate(
+      id,
+      {
+        groomName, groomAge, groomId, brideName, brideAge, brideId,
+        mahallMemberType, nikahDate, mahallId, waliName, witness1, witness2,
+        mahrAmount, mahrDescription, status, remarks,
+      },
+      { new: true, runValidators: true }
+    )
+      .populate('groomId', 'name')
+      .populate('brideId', 'name');
+
+    res.json({ success: true, data: updated });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Death Registration
 export const getAllDeathRegistrations = async (req: AuthRequest, res: Response) => {
   try {
@@ -165,6 +202,43 @@ export const createDeathRegistration = async (req: AuthRequest, res: Response) =
       });
     }
     res.status(201).json({ success: true, data: registration });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateDeathRegistration = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const {
+      deceasedName, deceasedId, deathDate, placeOfDeath, causeOfDeath,
+      mahallId, familyId, informantName, informantRelation, informantPhone,
+      status, remarks,
+    } = req.body;
+
+    const registration = await DeathRegistration.findById(id);
+    if (!registration) {
+      return res.status(404).json({ success: false, message: 'Death registration not found' });
+    }
+
+    // Check tenant access
+    if (!req.isSuperAdmin && registration.tenantId.toString() !== req.tenantId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const updated = await DeathRegistration.findByIdAndUpdate(
+      id,
+      {
+        deceasedName, deceasedId, deathDate, placeOfDeath, causeOfDeath,
+        mahallId, familyId, informantName, informantRelation, informantPhone,
+        status, remarks,
+      },
+      { new: true, runValidators: true }
+    )
+      .populate('deceasedId', 'name')
+      .populate('familyId', 'houseName');
+
+    res.json({ success: true, data: updated });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

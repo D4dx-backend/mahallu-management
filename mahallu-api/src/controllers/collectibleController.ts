@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Varisangya, Zakat, Wallet, Transaction } from '../models/Collectible';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
+import { postLedgerEntry, reverseLedgerEntry } from '../services/ledgerPostingService';
 
 const toObjectId = (id: string) =>
   mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id;
@@ -179,6 +180,24 @@ export const createVarisangya = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Auto-post to accounting ledger
+    try {
+      await postLedgerEntry({
+        tenantId: varisangya.tenantId,
+        ledgerName: 'Varisangya Collections',
+        ledgerType: 'income',
+        amount: varisangya.amount,
+        description: `Varisangya payment - Receipt ${varisangya.receiptNo || 'N/A'}`,
+        date: varisangya.paymentDate,
+        source: 'varisangya',
+        sourceId: varisangya._id as any,
+        paymentMethod: varisangya.paymentMethod,
+        referenceNo: varisangya.receiptNo,
+      });
+    } catch (ledgerError) {
+      console.error('Failed to auto-post varisangya to ledger:', ledgerError);
+    }
+
     res.status(201).json({ success: true, data: varisangya });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -225,10 +244,73 @@ export const updateVarisangya = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // Re-post ledger entry if amount changed
+    if (newAmount !== oldAmount) {
+      try {
+        await reverseLedgerEntry('varisangya', existing._id as any);
+        await postLedgerEntry({
+          tenantId: existing.tenantId,
+          ledgerName: 'Varisangya Collections',
+          ledgerType: 'income',
+          amount: newAmount,
+          description: `Varisangya payment - Receipt ${existing.receiptNo || 'N/A'}`,
+          date: existing.paymentDate,
+          source: 'varisangya',
+          sourceId: existing._id as any,
+          paymentMethod: existing.paymentMethod,
+          referenceNo: existing.receiptNo,
+        });
+      } catch (ledgerError) {
+        console.error('Failed to update varisangya ledger entry:', ledgerError);
+      }
+    }
+
     const updated = await Varisangya.findById(existing._id)
       .populate('familyId', 'houseName')
       .populate({ path: 'memberId', select: 'name familyName', populate: { path: 'familyId', select: 'houseName' } });
     res.json({ success: true, data: updated });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteVarisangya = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id || !toObjectId(id)) {
+      return res.status(400).json({ success: false, message: 'Valid varisangya ID is required' });
+    }
+
+    const query: any = { _id: toObjectId(id) };
+    if (req.tenantId) query.tenantId = req.tenantId;
+
+    const existing = await Varisangya.findOne(query);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Varisangya payment not found' });
+    }
+
+    // Reverse wallet balance
+    if (existing.familyId || existing.memberId) {
+      const wallet = await Wallet.findOne({
+        tenantId: existing.tenantId,
+        familyId: existing.familyId,
+        memberId: existing.memberId,
+      });
+      if (wallet) {
+        wallet.balance = (wallet.balance || 0) - existing.amount;
+        await wallet.save();
+      }
+    }
+
+    // Reverse ledger entry
+    try {
+      await reverseLedgerEntry('varisangya', existing._id as any);
+    } catch (ledgerError) {
+      console.error('Failed to reverse varisangya ledger entry:', ledgerError);
+    }
+
+    await Varisangya.findByIdAndDelete(existing._id);
+    res.json({ success: true, message: 'Varisangya payment deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -287,7 +369,103 @@ export const createZakat = async (req: AuthRequest, res: Response) => {
 
     const zakat = new Zakat(zakatData);
     await zakat.save();
+
+    // Auto-post to accounting ledger
+    try {
+      await postLedgerEntry({
+        tenantId: zakat.tenantId,
+        ledgerName: 'Zakat Collections',
+        ledgerType: 'income',
+        amount: zakat.amount,
+        description: `Zakat payment from ${zakat.payerName} - Receipt ${zakat.receiptNo || 'N/A'}`,
+        date: zakat.paymentDate,
+        source: 'zakat',
+        sourceId: zakat._id as any,
+        paymentMethod: zakat.paymentMethod,
+        referenceNo: zakat.receiptNo,
+      });
+    } catch (ledgerError) {
+      console.error('Failed to auto-post zakat to ledger:', ledgerError);
+    }
+
     res.status(201).json({ success: true, data: zakat });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateZakat = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id || !toObjectId(id)) {
+      return res.status(400).json({ success: false, message: 'Valid zakat ID is required' });
+    }
+
+    const query: any = { _id: toObjectId(id) };
+    if (req.tenantId) query.tenantId = req.tenantId;
+
+    const existing = await Zakat.findOne(query);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Zakat payment not found' });
+    }
+
+    const amountChanged = req.body.amount && req.body.amount !== existing.amount;
+
+    Object.assign(existing, req.body);
+    await existing.save();
+
+    // Re-post ledger entry if amount changed
+    if (amountChanged) {
+      try {
+        await reverseLedgerEntry('zakat', existing._id as any);
+        await postLedgerEntry({
+          tenantId: existing.tenantId,
+          ledgerName: 'Zakat Collections',
+          ledgerType: 'income',
+          amount: existing.amount,
+          description: `Zakat payment from ${existing.payerName} - Receipt ${existing.receiptNo || 'N/A'}`,
+          date: existing.paymentDate,
+          source: 'zakat',
+          sourceId: existing._id as any,
+          paymentMethod: existing.paymentMethod,
+          referenceNo: existing.receiptNo,
+        });
+      } catch (ledgerError) {
+        console.error('Failed to update zakat ledger entry:', ledgerError);
+      }
+    }
+
+    const updated = await Zakat.findById(existing._id).populate('payerId', 'name');
+    res.json({ success: true, data: updated });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteZakat = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id || !toObjectId(id)) {
+      return res.status(400).json({ success: false, message: 'Valid zakat ID is required' });
+    }
+
+    const query: any = { _id: toObjectId(id) };
+    if (req.tenantId) query.tenantId = req.tenantId;
+
+    const existing = await Zakat.findOne(query);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Zakat payment not found' });
+    }
+
+    // Reverse ledger entry
+    try {
+      await reverseLedgerEntry('zakat', existing._id as any);
+    } catch (ledgerError) {
+      console.error('Failed to reverse zakat ledger entry:', ledgerError);
+    }
+
+    await Zakat.findByIdAndDelete(existing._id);
+    res.json({ success: true, message: 'Zakat payment deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -4,17 +4,11 @@ export interface IInstitute extends Document {
   tenantId: mongoose.Types.ObjectId;
   name: string;
   place: string;
-  type: 'institute' | 'program' | 'madrasa';
+  type: 'institute' | 'madrasa' | 'orphanage' | 'hospital' | 'other';
   joinDate: Date;
   description?: string;
   contactNo?: string;
   email?: string;
-  address?: {
-    state: string;
-    district: string;
-    pinCode?: string;
-    postOffice?: string;
-  };
   status: 'active' | 'inactive';
   createdAt: Date;
   updatedAt: Date;
@@ -40,7 +34,7 @@ const InstituteSchema = new Schema<IInstitute>(
     },
     type: {
       type: String,
-      enum: ['institute', 'program', 'madrasa'],
+      enum: ['institute', 'madrasa', 'orphanage', 'hospital', 'other'],
       required: true,
     },
     joinDate: {
@@ -59,12 +53,6 @@ const InstituteSchema = new Schema<IInstitute>(
       type: String,
       trim: true,
       lowercase: true,
-    },
-    address: {
-      state: String,
-      district: String,
-      pinCode: String,
-      postOffice: String,
     },
     status: {
       type: String,

@@ -59,6 +59,58 @@ export const getNikahRegistrationValidation = [
   param('id').isMongoId().withMessage('Invalid nikah registration ID'),
 ];
 
+export const updateNikahRegistrationValidation = [
+  param('id').isMongoId().withMessage('Invalid nikah registration ID'),
+  body('groomName')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Groom name must be between 2 and 100 characters'),
+  body('groomAge')
+    .optional()
+    .isInt({ min: 0, max: 150 })
+    .withMessage('Groom age must be between 0 and 150'),
+  body('groomId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid groom member ID'),
+  body('brideName')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Bride name must be between 2 and 100 characters'),
+  body('brideAge')
+    .optional()
+    .isInt({ min: 0, max: 150 })
+    .withMessage('Bride age must be between 0 and 150'),
+  body('brideId')
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid bride member ID'),
+  body('mahallMemberType')
+    .optional()
+    .isIn(['groom', 'bride'])
+    .withMessage('Invalid mahall member type'),
+  body('nikahDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Nikah date must be a valid date'),
+  body('mahallId').optional().trim(),
+  body('waliName').optional().trim(),
+  body('witness1').optional().trim(),
+  body('witness2').optional().trim(),
+  body('mahrAmount')
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage('Mahr amount must be a positive number'),
+  body('mahrDescription').optional().trim(),
+  body('status')
+    .optional()
+    .isIn(['pending', 'approved', 'rejected'])
+    .withMessage('Invalid status'),
+  body('remarks').optional().trim(),
+];
+
 // Death Registration Validations
 export const createDeathRegistrationValidation = [
   body('deceasedName')
@@ -68,7 +120,7 @@ export const createDeathRegistrationValidation = [
     .isLength({ min: 2, max: 100 })
     .withMessage('Deceased name must be between 2 and 100 characters'),
   body('deceasedId')
-    .optional()
+    .optional({ values: 'falsy' })
     .isMongoId()
     .withMessage('Invalid deceased member ID'),
   body('deathDate')
@@ -80,7 +132,7 @@ export const createDeathRegistrationValidation = [
   body('causeOfDeath').optional().trim(),
   body('mahallId').optional().trim(),
   body('familyId')
-    .optional()
+    .optional({ values: 'falsy' })
     .isMongoId()
     .withMessage('Invalid family ID'),
   body('informantName').optional().trim(),
@@ -99,6 +151,42 @@ export const createDeathRegistrationValidation = [
 
 export const getDeathRegistrationValidation = [
   param('id').isMongoId().withMessage('Invalid death registration ID'),
+];
+
+export const updateDeathRegistrationValidation = [
+  param('id').isMongoId().withMessage('Invalid death registration ID'),
+  body('deceasedName')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Deceased name must be between 2 and 100 characters'),
+  body('deceasedId')
+    .optional({ values: 'falsy' })
+    .isMongoId()
+    .withMessage('Invalid deceased member ID'),
+  body('deathDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Death date must be a valid date'),
+  body('placeOfDeath').optional().trim(),
+  body('causeOfDeath').optional().trim(),
+  body('mahallId').optional().trim(),
+  body('familyId')
+    .optional({ values: 'falsy' })
+    .isMongoId()
+    .withMessage('Invalid family ID'),
+  body('informantName').optional().trim(),
+  body('informantRelation').optional().trim(),
+  body('informantPhone')
+    .optional()
+    .trim()
+    .matches(/^[0-9]{10}$/)
+    .withMessage('Informant phone must be exactly 10 digits'),
+  body('status')
+    .optional()
+    .isIn(['pending', 'approved', 'rejected'])
+    .withMessage('Invalid status'),
+  body('remarks').optional().trim(),
 ];
 
 // NOC Validations
