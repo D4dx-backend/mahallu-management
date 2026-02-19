@@ -69,7 +69,7 @@ export const getUserById = async (req: Request, res: Response) => {
 
 export const createUser = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, phone, email, role, permissions, password, tenantId, memberId } = req.body;
+    const { name, phone, email, role, permissions, password, tenantId, memberId, instituteId } = req.body;
 
     // Determine the final role (default to 'mahall' if not provided)
     const finalRole = role || 'mahall';
@@ -188,6 +188,14 @@ export const createUser = async (req: AuthRequest, res: Response) => {
     }
 
     // For non-member users, use existing logic
+    // For institute role, validate instituteId
+    if (finalRole === 'institute' && !instituteId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Institute ID is required for institute users',
+      });
+    }
+
     // Check if user already exists (phone + tenantId combination)
     const existingUser = await User.findOne({ phone, tenantId: finalTenantId });
     if (existingUser) {
@@ -206,6 +214,7 @@ export const createUser = async (req: AuthRequest, res: Response) => {
       email,
       role: finalRole,
       tenantId: finalTenantId,
+      instituteId: finalRole === 'institute' ? instituteId : undefined,
       isSuperAdmin: finalRole === 'super_admin',
       permissions: permissions || {
         view: false,
@@ -217,7 +226,10 @@ export const createUser = async (req: AuthRequest, res: Response) => {
     });
 
     await user.save();
-    const userResponse = await User.findById(user._id).select('-password').populate('tenantId', 'name code');
+    const userResponse = await User.findById(user._id)
+      .select('-password')
+      .populate('tenantId', 'name code')
+      .populate('instituteId', 'name type');
     res.status(201).json({ success: true, data: userResponse });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

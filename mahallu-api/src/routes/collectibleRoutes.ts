@@ -4,8 +4,11 @@ import {
   getNextReceiptNumber,
   createVarisangya,
   updateVarisangya,
+  deleteVarisangya,
   getAllZakats,
   createZakat,
+  updateZakat,
+  deleteZakat,
   getWallet,
   getWalletTransactions,
 } from '../controllers/collectibleController';
@@ -158,6 +161,7 @@ router.get('/receipt-next', getNextReceiptNumber);
  */
 router.post('/varisangya', createVarisangyaValidation, validationHandler, createVarisangya);
 router.put('/varisangya/:id', updateVarisangyaValidation, validationHandler, updateVarisangya);
+router.delete('/varisangya/:id', deleteVarisangya);
 
 /**
  * @swagger
@@ -290,6 +294,8 @@ router.get('/zakat', getAllZakats);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.post('/zakat', createZakatValidation, validationHandler, createZakat);
+router.put('/zakat/:id', updateZakat);
+router.delete('/zakat/:id', deleteZakat);
 
 /**
  * @swagger

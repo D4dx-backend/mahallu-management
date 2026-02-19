@@ -14,7 +14,7 @@ export const createInstituteValidation = [
     .isLength({ min: 1, max: 200 })
     .withMessage('Place must be between 1 and 200 characters'),
   body('type')
-    .isIn(['institute', 'program', 'madrasa'])
+    .isIn(['institute', 'madrasa', 'orphanage', 'hospital', 'other'])
     .withMessage('Invalid institute type'),
   body('joinDate')
     .optional()
@@ -32,10 +32,6 @@ export const createInstituteValidation = [
     .isEmail()
     .withMessage('Invalid email address')
     .normalizeEmail(),
-  body('address.state').optional().trim(),
-  body('address.district').optional().trim(),
-  body('address.pinCode').optional().trim(),
-  body('address.postOffice').optional().trim(),
   body('status')
     .optional()
     .isIn(['active', 'inactive'])
@@ -56,7 +52,7 @@ export const updateInstituteValidation = [
     .withMessage('Place must be between 1 and 200 characters'),
   body('type')
     .optional()
-    .isIn(['institute', 'program', 'madrasa'])
+    .isIn(['institute', 'madrasa', 'orphanage', 'hospital', 'other'])
     .withMessage('Invalid institute type'),
   body('joinDate')
     .optional()

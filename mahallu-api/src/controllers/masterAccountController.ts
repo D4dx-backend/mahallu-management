@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { InstituteAccount, Category, MasterWallet, Ledger, LedgerItem } from '../models/MasterAccount';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
+import { verifyTenantOwnership } from '../utils/tenantCheck';
 
 // Institute Accounts
 export const getAllInstituteAccounts = async (req: AuthRequest, res: Response) => {
@@ -60,7 +61,7 @@ export const createInstituteAccount = async (req: AuthRequest, res: Response) =>
 // Categories
 export const getAllCategories = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, tenantId } = req.query;
+    const { type, instituteId, tenantId } = req.query;
     const { page, limit, skip } = getPaginationParams(req);
     const query: any = {};
 
@@ -72,6 +73,7 @@ export const getAllCategories = async (req: AuthRequest, res: Response) => {
     }
 
     if (type) query.type = type;
+    if (instituteId) query.instituteId = instituteId;
 
     const [categories, total] = await Promise.all([
       Category.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -158,7 +160,7 @@ export const createWallet = async (req: AuthRequest, res: Response) => {
 // Ledgers
 export const getAllLedgers = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, tenantId } = req.query;
+    const { type, instituteId, tenantId } = req.query;
     const { page, limit, skip } = getPaginationParams(req);
     const query: any = {};
 
@@ -170,6 +172,7 @@ export const getAllLedgers = async (req: AuthRequest, res: Response) => {
     }
 
     if (type) query.type = type;
+    if (instituteId) query.instituteId = instituteId;
 
     const [ledgers, total] = await Promise.all([
       Ledger.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -207,7 +210,7 @@ export const createLedger = async (req: AuthRequest, res: Response) => {
 // Ledger Items
 export const getLedgerItems = async (req: AuthRequest, res: Response) => {
   try {
-    const { ledgerId, tenantId, startDate, endDate } = req.query;
+    const { ledgerId, instituteId, tenantId, startDate, endDate } = req.query;
     const { page, limit, skip } = getPaginationParams(req);
     const query: any = {};
 
@@ -219,6 +222,7 @@ export const getLedgerItems = async (req: AuthRequest, res: Response) => {
     }
 
     if (ledgerId) query.ledgerId = ledgerId;
+    if (instituteId) query.instituteId = instituteId;
     if (startDate || endDate) {
       query.date = {};
       if (startDate) query.date.$gte = new Date(startDate as string);
@@ -261,6 +265,197 @@ export const createLedgerItem = async (req: AuthRequest, res: Response) => {
       .populate('ledgerId', 'name')
       .populate('categoryId', 'name');
     res.status(201).json({ success: true, data: populated });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============ UPDATE OPERATIONS ============
+
+export const updateInstituteAccount = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await InstituteAccount.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Institute account not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'InstituteAccount')) return;
+
+    const account = await InstituteAccount.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
+      .populate('instituteId', 'name');
+    res.json({ success: true, data: account });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateCategory = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await Category.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'Category')) return;
+
+    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    res.json({ success: true, data: category });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateWallet = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await MasterWallet.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Wallet not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'MasterWallet')) return;
+
+    const wallet = await MasterWallet.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    res.json({ success: true, data: wallet });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateLedger = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await Ledger.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Ledger not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'Ledger')) return;
+
+    const ledger = await Ledger.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    res.json({ success: true, data: ledger });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateLedgerItem = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await LedgerItem.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Ledger item not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'LedgerItem')) return;
+
+    // Prevent editing auto-posted entries
+    if (existing.source && existing.source !== 'manual') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot edit auto-posted entry from ${existing.source}. Edit the original transaction instead.`,
+      });
+    }
+
+    const item = await LedgerItem.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
+      .populate('ledgerId', 'name')
+      .populate('categoryId', 'name');
+    res.json({ success: true, data: item });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============ DELETE OPERATIONS ============
+
+export const deleteInstituteAccount = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await InstituteAccount.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Institute account not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'InstituteAccount')) return;
+
+    await InstituteAccount.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Institute account deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteCategory = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await Category.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'Category')) return;
+
+    // Check if category is used in any ledger items
+    const usedInItems = await LedgerItem.countDocuments({ categoryId: req.params.id });
+    if (usedInItems > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete category. It is used in ${usedInItems} ledger item(s).`,
+      });
+    }
+
+    await Category.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Category deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteWallet = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await MasterWallet.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Wallet not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'MasterWallet')) return;
+
+    await MasterWallet.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Wallet deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteLedger = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await Ledger.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Ledger not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'Ledger')) return;
+
+    // Check if ledger has items
+    const itemCount = await LedgerItem.countDocuments({ ledgerId: req.params.id });
+    if (itemCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete ledger. It has ${itemCount} ledger item(s).`,
+      });
+    }
+
+    await Ledger.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Ledger deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteLedgerItem = async (req: AuthRequest, res: Response) => {
+  try {
+    const existing = await LedgerItem.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Ledger item not found' });
+    }
+    if (!verifyTenantOwnership(req, res, existing.tenantId, 'LedgerItem')) return;
+
+    // Prevent deleting auto-posted entries
+    if (existing.source && existing.source !== 'manual') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete auto-posted entry from ${existing.source}. Delete the original transaction instead.`,
+      });
+    }
+
+    await LedgerItem.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Ledger item deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

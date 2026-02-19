@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 
 export interface TenantRequest extends Request {
   tenantId?: string;
+  instituteId?: string;
   isSuperAdmin?: boolean;
   user?: any;
 }
@@ -53,6 +54,24 @@ export const tenantFilter = (req: TenantRequest, res: Response, next: NextFuncti
     }
     if (req.body && !req.body.tenantId) {
       req.body.tenantId = req.tenantId;
+    }
+  }
+  next();
+};
+
+/**
+ * Middleware to ensure institute isolation for institute role users
+ * Adds instituteId filter to queries for users with role 'institute'
+ */
+export const instituteFilter = (req: TenantRequest, res: Response, next: NextFunction) => {
+  // For institute role users, auto-inject their instituteId into queries
+  if (req.user?.role === 'institute' && req.user?.instituteId) {
+    const instituteId = req.user.instituteId.toString();
+    if (req.query) {
+      req.query.instituteId = instituteId;
+    }
+    if (req.body && !req.body.instituteId) {
+      req.body.instituteId = instituteId;
     }
   }
   next();

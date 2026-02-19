@@ -5,6 +5,7 @@ import User from '../models/User';
 export interface AuthRequest extends Request {
   user?: any;
   tenantId?: string;
+  instituteId?: string;
   isSuperAdmin?: boolean;
 }
 
@@ -47,6 +48,17 @@ export const authMiddleware = async (
     } else {
       // Regular user or super admin not viewing as tenant
       req.tenantId = user.tenantId?.toString();
+    }
+
+    // Set instituteId for institute role users
+    if (user.role === 'institute' && user.instituteId) {
+      req.instituteId = user.instituteId.toString();
+    }
+
+    // Check for x-institute-id header (used by frontend to filter by institute)
+    const headerInstituteId = req.headers['x-institute-id'] as string;
+    if (headerInstituteId && (user.isSuperAdmin || user.role === 'mahall')) {
+      req.instituteId = headerInstituteId;
     }
 
     next();
