@@ -49,6 +49,10 @@ export interface LedgerItem {
   amount: number;
   type: 'income' | 'expense';
   description?: string;
+  paymentMethod?: string;
+  referenceNo?: string;
+  source?: 'manual' | 'salary' | 'varisangya' | 'zakat';
+  sourceId?: string;
   createdAt: string;
 }
 
@@ -70,8 +74,18 @@ export const masterAccountService = {
     return response.data.data;
   },
 
+  updateInstituteAccount: async (id: string, data: Partial<InstituteAccount>) => {
+    const response = await api.put<{ success: boolean; data: InstituteAccount }>(`/master-accounts/institute/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteInstituteAccount: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/master-accounts/institute/${id}`);
+    return response.data;
+  },
+
   // Categories
-  getAllCategories: async (params?: { type?: string; page?: number; limit?: number }) => {
+  getAllCategories: async (params?: { type?: string; instituteId?: string; page?: number; limit?: number }) => {
     const response = await api.get<{ success: boolean; data: Category[]; pagination?: any }>('/master-accounts/categories', { params });
     // Handle both paginated and non-paginated responses
     if (response.data.pagination) {
@@ -83,6 +97,16 @@ export const masterAccountService = {
   createCategory: async (data: Partial<Category>) => {
     const response = await api.post<{ success: boolean; data: Category }>('/master-accounts/categories', data);
     return response.data.data;
+  },
+
+  updateCategory: async (id: string, data: Partial<Category>) => {
+    const response = await api.put<{ success: boolean; data: Category }>(`/master-accounts/categories/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteCategory: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/master-accounts/categories/${id}`);
+    return response.data;
   },
 
   // Wallets
@@ -100,8 +124,18 @@ export const masterAccountService = {
     return response.data.data;
   },
 
+  updateWallet: async (id: string, data: Partial<MasterWallet>) => {
+    const response = await api.put<{ success: boolean; data: MasterWallet }>(`/master-accounts/wallets/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteWallet: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/master-accounts/wallets/${id}`);
+    return response.data;
+  },
+
   // Ledgers
-  getAllLedgers: async (params?: { type?: string; page?: number; limit?: number }) => {
+  getAllLedgers: async (params?: { type?: string; instituteId?: string; page?: number; limit?: number }) => {
     const response = await api.get<{ success: boolean; data: Ledger[]; pagination?: any }>('/master-accounts/ledgers', { params });
     // Handle both paginated and non-paginated responses
     if (response.data.pagination) {
@@ -115,8 +149,18 @@ export const masterAccountService = {
     return response.data.data;
   },
 
+  updateLedger: async (id: string, data: Partial<Ledger>) => {
+    const response = await api.put<{ success: boolean; data: Ledger }>(`/master-accounts/ledgers/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteLedger: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/master-accounts/ledgers/${id}`);
+    return response.data;
+  },
+
   // Ledger Items
-  getLedgerItems: async (params?: { ledgerId?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) => {
+  getLedgerItems: async (params?: { ledgerId?: string; instituteId?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) => {
     const response = await api.get<{ success: boolean; data: LedgerItem[]; pagination?: any }>('/master-accounts/ledger-items', {
       params,
     });
@@ -130,6 +174,16 @@ export const masterAccountService = {
   createLedgerItem: async (data: Partial<LedgerItem>) => {
     const response = await api.post<{ success: boolean; data: LedgerItem }>('/master-accounts/ledger-items', data);
     return response.data.data;
+  },
+
+  updateLedgerItem: async (id: string, data: Partial<LedgerItem>) => {
+    const response = await api.put<{ success: boolean; data: LedgerItem }>(`/master-accounts/ledger-items/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteLedgerItem: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/master-accounts/ledger-items/${id}`);
+    return response.data;
   },
 };
 

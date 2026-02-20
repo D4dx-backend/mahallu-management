@@ -6,7 +6,7 @@ import StatCard from '@/components/ui/StatCard';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { dashboardService, DashboardStats, RecentFamily, ActivityTimelineData } from '@/services/dashboardService';
+import { dashboardService, DashboardStats, RecentFamily, ActivityTimelineData, FinancialSummary } from '@/services/dashboardService';
 import { ROUTES } from '@/constants/routes';
 import { formatDate } from '@/utils/format';
 
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentFamilies, setRecentFamilies] = useState<RecentFamily[]>([]);
   const [activityTimeline, setActivityTimeline] = useState<ActivityTimelineData[]>([]);
+  const [financialSummary, setFinancialSummary] = useState<FinancialSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,14 +28,16 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [statsData, familiesData, timelineData] = await Promise.all([
+      const [statsData, familiesData, timelineData, financialData] = await Promise.all([
         dashboardService.getStats(),
         dashboardService.getRecentFamilies(5),
         dashboardService.getActivityTimeline(7),
+        dashboardService.getFinancialSummary().catch(() => null),
       ]);
       setStats(statsData);
       setRecentFamilies(familiesData);
       setActivityTimeline(timelineData);
+      setFinancialSummary(financialData);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load dashboard data');
       console.error('Error fetching dashboard data:', err);
@@ -80,14 +83,16 @@ export default function Dashboard() {
           onClick: () => navigate(ROUTES.FAMILIES.LIST),
         },
         {
-          title: 'Total Revenue',
-          value: '₹ 12,500', // Dummy value as revenue might not be in stats
+          title: 'Monthly Income',
+          value: `₹${(financialSummary?.monthlyIncome || 0).toLocaleString()}`,
           icon: <FiDollarSign className="h-5 w-5" />,
-          trend: { value: 12.5, isPositive: true },
+          trend: financialSummary?.monthlyNet !== undefined
+            ? { value: Math.abs(financialSummary.monthlyNet), isPositive: financialSummary.monthlyNet >= 0 }
+            : undefined,
         },
         {
-          title: 'Institutes',
-          value: '0',
+          title: 'Bank Balance',
+          value: `₹${(financialSummary?.totalBankBalance || 0).toLocaleString()}`,
           icon: <FiInbox className="h-5 w-5" />,
         },
       ]

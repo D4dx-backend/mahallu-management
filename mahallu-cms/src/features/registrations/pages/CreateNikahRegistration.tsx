@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,6 +9,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 import { ROUTES } from '@/constants/routes';
 import { registrationService } from '@/services/registrationService';
 import { memberService } from '@/services/memberService';
@@ -37,6 +38,8 @@ export default function CreateNikahRegistration() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [memberOptions, setMemberOptions] = useState<{ value: string; label: string; sublabel?: string }[]>([]);
+  const [isMemberSearching, setIsMemberSearching] = useState(false);
   const {
     register,
     handleSubmit,
@@ -53,40 +56,67 @@ export default function CreateNikahRegistration() {
   const selectedMahallMemberType = watch('mahallMemberType') || '';
   const selectedMahallMemberId = watch('mahallMemberId') || '';
 
+  // Reset member search when member type changes
   useEffect(() => {
     if (!selectedMahallMemberType) {
       setMembers([]);
+      setMemberOptions([]);
       setValue('mahallMemberId', '');
       return;
     }
     setValue('mahallMemberId', '');
-    const fetchMembers = async () => {
+    setMembers([]);
+    setMemberOptions([]);
+  }, [selectedMahallMemberType, setValue]);
+
+  // Handle member search with server-side query
+  const handleMemberSearch = useCallback(
+    async (query: string) => {
+      if (!selectedMahallMemberType) return;
+      setIsMemberSearching(true);
       try {
         const result = await memberService.getAll({
           gender: selectedMahallMemberType === 'groom' ? 'male' : 'female',
-          limit: 1000,
+          search: query || undefined,
+          limit: 50,
         });
-        setMembers(result.data || []);
+        const fetchedMembers = result.data || [];
+        setMembers(fetchedMembers);
+        setMemberOptions(
+          fetchedMembers.map((member: Member) => ({
+            value: member.id,
+            label: member.name,
+            sublabel: member.familyName ? `Family: ${member.familyName}` : undefined,
+          }))
+        );
       } catch (err) {
-        console.error('Error fetching members:', err);
+        console.error('Error searching members:', err);
         setMembers([]);
+        setMemberOptions([]);
+      } finally {
+        setIsMemberSearching(false);
       }
-    };
-    fetchMembers();
-  }, [selectedMahallMemberType, setValue]);
+    },
+    [selectedMahallMemberType]
+  );
 
-  useEffect(() => {
-    if (!selectedMahallMemberId) return;
-    const selectedMember = members.find((m) => m.id === selectedMahallMemberId);
-    if (!selectedMember) return;
-    if (selectedMahallMemberType === 'groom') {
-      setValue('groomName', selectedMember.name);
-      if (selectedMember.age) setValue('groomAge', selectedMember.age);
-    } else if (selectedMahallMemberType === 'bride') {
-      setValue('brideName', selectedMember.name);
-      if (selectedMember.age) setValue('brideAge', selectedMember.age);
-    }
-  }, [selectedMahallMemberId, selectedMahallMemberType, members, setValue]);
+  // Handle member selection - auto-fill name and age
+  const handleMemberSelect = useCallback(
+    (memberId: string) => {
+      setValue('mahallMemberId', memberId);
+      if (!memberId) return;
+      const selectedMember = members.find((m) => m.id === memberId);
+      if (!selectedMember) return;
+      if (selectedMahallMemberType === 'groom') {
+        setValue('groomName', selectedMember.name);
+        if (selectedMember.age) setValue('groomAge', selectedMember.age);
+      } else if (selectedMahallMemberType === 'bride') {
+        setValue('brideName', selectedMember.name);
+        if (selectedMember.age) setValue('brideAge', selectedMember.age);
+      }
+    },
+    [members, selectedMahallMemberType, setValue]
+  );
 
   const onSubmit = async (data: NikahFormData) => {
     try {
@@ -155,17 +185,14 @@ export default function CreateNikahRegistration() {
               className="md:col-span-2"
             />
             {selectedMahallMemberType && (
-              <Select
+              <SearchableSelect
                 label="Search and select member"
-                options={[
-                  { value: '', label: 'Select member...' },
-                  ...members.map((member) => ({
-                    value: member.id,
-                    label: `${member.name} (${member.familyName})`,
-                  })),
-                ]}
-                {...register('mahallMemberId')}
-                placeholder="Click to search and select member"
+                placeholder="Type a name to search members..."
+                options={memberOptions}
+                value={selectedMahallMemberId}
+                onChange={handleMemberSelect}
+                onSearch={handleMemberSearch}
+                isLoading={isMemberSearching}
                 className="md:col-span-2"
               />
             )}

@@ -136,34 +136,6 @@ export default function ProgramDetail() {
                 <p className="mt-1 text-gray-900 dark:text-gray-100">{program.email}</p>
               </div>
             )}
-            {program.address && (
-              <>
-                {program.address.state && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">State</label>
-                    <p className="mt-1 text-gray-900 dark:text-gray-100">{program.address.state}</p>
-                  </div>
-                )}
-                {program.address.district && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">District</label>
-                    <p className="mt-1 text-gray-900 dark:text-gray-100">{program.address.district}</p>
-                  </div>
-                )}
-                {program.address.pinCode && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Pin Code</label>
-                    <p className="mt-1 text-gray-900 dark:text-gray-100">{program.address.pinCode}</p>
-                  </div>
-                )}
-                {program.address.postOffice && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Post Office</label>
-                    <p className="mt-1 text-gray-900 dark:text-gray-100">{program.address.postOffice}</p>
-                  </div>
-                )}
-              </>
-            )}
           </div>
         </Card>
 

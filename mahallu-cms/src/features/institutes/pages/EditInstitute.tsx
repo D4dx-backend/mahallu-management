@@ -12,20 +12,15 @@ import Select from '@/components/ui/Select';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { ROUTES } from '@/constants/routes';
 import { instituteService } from '@/services/instituteService';
-import { STATES, getDistrictsByState } from '@/constants/locations';
 
 const instituteSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   place: z.string().min(1, 'Place is required'),
-  type: z.enum(['institute', 'program', 'madrasa']),
+  type: z.enum(['institute', 'madrasa', 'orphanage', 'hospital', 'other']),
   joinDate: z.string().min(1, 'Join Date is required'),
   description: z.string().optional(),
   contactNo: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  'address.state': z.string().optional(),
-  'address.district': z.string().optional(),
-  'address.pinCode': z.string().optional(),
-  'address.postOffice': z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
 });
 
@@ -40,32 +35,11 @@ export default function EditInstitute() {
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<InstituteFormData>({
     resolver: zodResolver(instituteSchema),
-    defaultValues: {
-      'address.state': 'Kerala',
-    },
   });
-
-  // Watch state changes to update districts
-  const selectedState = watch('address.state');
-  
-  // Get districts based on selected state
-  const districtOptions = selectedState ? getDistrictsByState(selectedState) : [];
-  
-  // Reset district when state changes
-  const handleStateChange = (value: string) => {
-    setValue('address.state', value);
-    // Only reset district if it's not in the new state's districts
-    const newDistricts = getDistrictsByState(value);
-    const currentDistrict = watch('address.district');
-    if (!newDistricts.find(d => d.value === currentDistrict)) {
-      setValue('address.district', '');
-    }
-  };
 
   useEffect(() => {
     if (id) {
@@ -80,18 +54,12 @@ export default function EditInstitute() {
       const institute = await instituteService.getById(id);
       setValue('name', institute.name);
       setValue('place', institute.place);
-      setValue('type', institute.type as 'institute' | 'program' | 'madrasa');
+      setValue('type', institute.type as any);
       setValue('joinDate', institute.joinDate ? new Date(institute.joinDate).toISOString().split('T')[0] : '');
       setValue('description', institute.description || '');
       setValue('contactNo', institute.contactNo || '');
       setValue('email', institute.email || '');
       setValue('status', institute.status || 'active');
-      if (institute.address) {
-        setValue('address.state', institute.address.state || '');
-        setValue('address.district', institute.address.district || '');
-        setValue('address.pinCode', institute.address.pinCode || '');
-        setValue('address.postOffice', institute.address.postOffice || '');
-      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load institute');
     } finally {
@@ -113,15 +81,6 @@ export default function EditInstitute() {
         email: data.email || undefined,
         status: data.status || 'active',
       };
-
-      if (data['address.state'] || data['address.district']) {
-        instituteData.address = {
-          state: data['address.state'],
-          district: data['address.district'],
-          pinCode: data['address.pinCode'],
-          postOffice: data['address.postOffice'],
-        };
-      }
 
       await instituteService.update(id, instituteData);
       navigate(ROUTES.INSTITUTES.LIST);
@@ -172,8 +131,10 @@ export default function EditInstitute() {
               error={errors.type?.message}
               options={[
                 { value: 'institute', label: 'Institute' },
-                { value: 'program', label: 'Program' },
                 { value: 'madrasa', label: 'Madrasa' },
+                { value: 'orphanage', label: 'Orphanage' },
+                { value: 'hospital', label: 'Hospital' },
+                { value: 'other', label: 'Other' },
               ]}
             />
             <Input label="Join Date" type="date" {...register('joinDate')} error={errors.joinDate?.message} />
@@ -191,26 +152,6 @@ export default function EditInstitute() {
             <div className="md:col-span-2">
               <Input label="Description" {...register('description')} error={errors.description?.message} />
             </div>
-            <Select
-              label="State"
-              options={STATES}
-              {...register('address.state', {
-                onChange: (e) => handleStateChange(e.target.value),
-              })}
-              error={errors['address.state']?.message}
-            />
-            <Select
-              label="District"
-              options={[
-                { value: '', label: 'Select district...' },
-                ...districtOptions,
-              ]}
-              {...register('address.district')}
-              error={errors['address.district']?.message}
-              disabled={!selectedState || districtOptions.length === 0}
-            />
-            <Input label="PIN Code" {...register('address.pinCode')} error={errors['address.pinCode']?.message} />
-            <Input label="Post Office" {...register('address.postOffice')} error={errors['address.postOffice']?.message} />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">

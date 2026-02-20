@@ -144,33 +144,8 @@ export default function InstituteDetail() {
                 <p className="mt-1 text-gray-900 dark:text-gray-100">{institute.email}</p>
               </div>
             )}
-            {institute.address && (
-              <>
-                {institute.address.state && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">State</label>
-                    <p className="mt-1 text-gray-900 dark:text-gray-100">{institute.address.state}</p>
-                  </div>
-                )}
-                {institute.address.district && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">District</label>
-                    <p className="mt-1 text-gray-900 dark:text-gray-100">{institute.address.district}</p>
-                  </div>
-                )}
-                {institute.address.pinCode && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Pin Code</label>
-                    <p className="mt-1 text-gray-900 dark:text-gray-100">{institute.address.pinCode}</p>
-                  </div>
-                )}
-                {institute.address.postOffice && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Post Office</label>
-                    <p className="mt-1 text-gray-900 dark:text-gray-100">{institute.address.postOffice}</p>
-                  </div>
-                )}
-              </>
+            {!institute.contactNo && !institute.email && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No contact information available</p>
             )}
           </div>
         </Card>

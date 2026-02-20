@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiX, FiList, FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
+import { FiX, FiList, FiTrendingUp, FiTrendingDown, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
+import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import StatCard from '@/components/ui/StatCard';
 import Table from '@/components/ui/Table';
@@ -12,10 +14,13 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import TableToolbar from '@/components/ui/TableToolbar';
 import { TableColumn, Pagination as PaginationType } from '@/types';
 import { masterAccountService, LedgerItem, Ledger } from '@/services/masterAccountService';
+import { instituteService } from '@/services/instituteService';
+import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/utils/format';
 import { exportToCSV, exportToJSON, exportToPDF } from '@/utils/exportUtils';
 
 export default function LedgerItemsList() {
+  const { currentInstituteId: userInstituteId } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const [ledgerFilter, setLedgerFilter] = useState('all');
@@ -27,14 +32,24 @@ export default function LedgerItemsList() {
   const [itemsPerPage] = useState(10);
   const [pagination, setPagination] = useState<PaginationType | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<LedgerItem | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [editForm, setEditForm] = useState({ date: '', amount: 0, type: 'income' as 'income' | 'expense', description: '', paymentMethod: '', referenceNo: '' });
+  const [institutes, setInstitutes] = useState<{ id: string; name: string }[]>([]);
+  const [instituteFilter, setInstituteFilter] = useState(userInstituteId || 'all');
 
   useEffect(() => {
     fetchLedgers();
+    if (!userInstituteId) {
+      instituteService.getAll({ limit: 1000 }).then(r => setInstitutes(r.data.map((i: any) => ({ id: i.id, name: i.name })))).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
     fetchItems();
-  }, [ledgerFilter, currentPage]);
+  }, [ledgerFilter, currentPage, instituteFilter]);
 
   const fetchLedgers = async () => {
     try {
@@ -57,6 +72,9 @@ export default function LedgerItemsList() {
       };
       if (ledgerFilter !== 'all') {
         params.ledgerId = ledgerFilter;
+      }
+      if (instituteFilter !== 'all') {
+        params.instituteId = instituteFilter;
       }
       const result = await masterAccountService.getLedgerItems(params);
       setItems(Array.isArray(result.data) ? result.data : []);
@@ -137,7 +155,90 @@ export default function LedgerItemsList() {
       render: (amount) => `₹${amount?.toLocaleString() || 0}`,
     },
     { key: 'description', label: 'Description' },
+    {
+      key: 'source' as any,
+      label: 'Source',
+      render: (source: string) => (
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+          source === 'manual' || !source
+            ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+            : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+        }`}>
+          {source || 'manual'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_, row) => {
+        const isAuto = row.source && row.source !== 'manual';
+        return (
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => !isAuto && openEditModal(row)}
+              className={`p-1.5 rounded-md ${isAuto ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'} text-gray-600 dark:text-gray-400`}
+              title={isAuto ? 'Auto-posted entries cannot be edited' : 'Edit'}
+              disabled={isAuto}
+            >
+              <FiEdit2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => { if (!isAuto) { setSelectedItem(row); setShowDeleteModal(true); } }}
+              className={`p-1.5 rounded-md ${isAuto ? 'opacity-30 cursor-not-allowed' : 'hover:bg-red-50 dark:hover:bg-red-900/20'} text-red-600 dark:text-red-400`}
+              title={isAuto ? 'Auto-posted entries cannot be deleted' : 'Delete'}
+              disabled={isAuto}
+            >
+              <FiTrash2 className="h-4 w-4" />
+            </button>
+          </div>
+        );
+      },
+    },
   ];
+
+  const openEditModal = (item: LedgerItem) => {
+    setSelectedItem(item);
+    setEditForm({
+      date: item.date ? new Date(item.date).toISOString().split('T')[0] : '',
+      amount: item.amount || 0,
+      type: item.type || 'income',
+      description: item.description || '',
+      paymentMethod: (item as any).paymentMethod || '',
+      referenceNo: (item as any).referenceNo || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    if (!selectedItem) return;
+    try {
+      await masterAccountService.updateLedgerItem(selectedItem.id, {
+        ...editForm,
+        amount: Number(editForm.amount),
+      });
+      await fetchItems();
+      setShowEditModal(false);
+      setSelectedItem(null);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update ledger item');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+    try {
+      setDeleting(true);
+      await masterAccountService.deleteLedgerItem(selectedItem.id);
+      await fetchItems();
+      setShowDeleteModal(false);
+      setSelectedItem(null);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to delete ledger item');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const totalIncome = items.filter((i) => i.type === 'income').reduce((sum, i) => sum + (i.amount || 0), 0);
   const totalExpense = items.filter((i) => i.type === 'expense').reduce((sum, i) => sum + (i.amount || 0), 0);
@@ -195,6 +296,7 @@ export default function LedgerItemsList() {
             </button>
             <div className="w-64">
               <Select
+                label="Ledger"
                 options={[
                   { value: 'all', label: 'All Ledgers' },
                   ...ledgers.map((l) => ({ value: l.id, label: l.name })),
@@ -203,6 +305,19 @@ export default function LedgerItemsList() {
                 onChange={(e) => setLedgerFilter(e.target.value)}
               />
             </div>
+            {!userInstituteId && (
+              <div className="w-64">
+                <Select
+                  label="Institute"
+                  options={[
+                    { value: 'all', label: 'All Institutes' },
+                    ...institutes.map(i => ({ value: i.id, label: i.name })),
+                  ]}
+                  value={instituteFilter}
+                  onChange={(e) => setInstituteFilter(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -234,6 +349,45 @@ export default function LedgerItemsList() {
           </>
         )}
       </Card>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => { setShowEditModal(false); setSelectedItem(null); }}
+        title="Edit Ledger Item"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => { setShowEditModal(false); setSelectedItem(null); }}>Cancel</Button>
+            <Button onClick={handleEdit}>Save Changes</Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input label="Date" type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+          <Select label="Type" value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value as 'income' | 'expense' })} options={[{ value: 'income', label: 'Income' }, { value: 'expense', label: 'Expense' }]} />
+          <Input label="Amount" type="number" step="0.01" value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: parseFloat(e.target.value) || 0 })} />
+          <Input label="Description" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+          <Input label="Payment Method" value={editForm.paymentMethod} onChange={(e) => setEditForm({ ...editForm, paymentMethod: e.target.value })} />
+          <Input label="Reference No" value={editForm.referenceNo} onChange={(e) => setEditForm({ ...editForm, referenceNo: e.target.value })} />
+        </div>
+      </Modal>
+
+      {/* Delete Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setSelectedItem(null); }}
+        title="Delete Ledger Item"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => { setShowDeleteModal(false); setSelectedItem(null); }}>Cancel</Button>
+            <Button variant="danger" onClick={handleDelete} isLoading={deleting}>Delete</Button>
+          </>
+        }
+      >
+        <p className="text-gray-600 dark:text-gray-400">
+          Are you sure you want to delete this ledger item (<strong>₹{selectedItem?.amount?.toLocaleString()}</strong> - {selectedItem?.description})? This action cannot be undone.
+        </p>
+      </Modal>
     </div>
   );
 }

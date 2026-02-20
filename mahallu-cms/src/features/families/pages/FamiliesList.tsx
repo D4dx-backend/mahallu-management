@@ -110,7 +110,7 @@ export default function FamiliesList() {
 
   const columns: TableColumn<Family>[] = [
     { key: 'id', label: 'No.', render: (_, __, index) => index + 1 },
-    { key: 'mahallId', label: 'Mahall ID', render: (id) => id || '-' },
+    { key: 'mahallId', label: 'Family ID', render: (id) => id || '-' },
     { key: 'houseName', label: 'House Name', sortable: true },
     {
       key: 'familyHead',

@@ -4,6 +4,11 @@ export const ROUTES = {
   
   // Dashboard
   DASHBOARD: '/dashboard',
+
+  // Member Portal
+  MEMBER: {
+    OVERVIEW: '/member/overview',
+  },
   
   // Users
   USERS: {
@@ -45,11 +50,32 @@ export const ROUTES = {
     DETAIL: (id: string) => `/programs/${id}`,
   },
   
-  // Madrasa
-  MADRASA: {
-    LIST: '/madrasa',
-    CREATE: '/madrasa/create',
-    DETAIL: (id: string) => `/madrasa/${id}`,
+  // Employees
+  EMPLOYEES: {
+    LIST: '/employees',
+    CREATE: '/employees/create',
+    DETAIL: (id: string) => `/employees/${id}`,
+    EDIT: (id: string) => `/employees/${id}/edit`,
+  },
+  
+  // Salary
+  SALARY: {
+    LIST: '/salary',
+    CREATE: '/salary/create',
+    DETAIL: (id: string) => `/salary/${id}`,
+    SUMMARY: '/salary/summary',
+  },
+  
+  // Accounting Reports
+  ACCOUNTING: {
+    DAY_BOOK: '/accounting/day-book',
+    TRIAL_BALANCE: '/accounting/trial-balance',
+    BALANCE_SHEET: '/accounting/balance-sheet',
+    LEDGER_REPORT: '/accounting/ledger-report',
+    INCOME_EXPENDITURE: '/accounting/income-expenditure',
+    CONSOLIDATED: '/accounting/consolidated',
+    PETTY_CASH: '/accounting/petty-cash',
+    PETTY_CASH_DETAIL: (id: string) => `/petty-cash/${id}`,
   },
   
   // Committees
@@ -122,5 +148,13 @@ export const ROUTES = {
   
   // Mahall Main
   MAHALL_MAIN: '/mahall-main',
+  
+  // Assets
+  ASSETS: {
+    LIST: '/assets',
+    CREATE: '/assets/create',
+    DETAIL: (id: string) => `/assets/${id}`,
+    EDIT: (id: string) => `/assets/${id}/edit`,
+  },
 } as const;
 

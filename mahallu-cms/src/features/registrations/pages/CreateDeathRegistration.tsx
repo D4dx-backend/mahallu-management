@@ -34,7 +34,6 @@ export default function CreateDeathRegistration() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
-  const [memberSearch, setMemberSearch] = useState('');
   const {
     register,
     handleSubmit,
@@ -54,7 +53,6 @@ export default function CreateDeathRegistration() {
     const fetchMembers = async () => {
       try {
         const result = await memberService.getAll({
-          search: memberSearch || undefined,
           limit: 1000,
         });
         setMembers(result.data || []);
@@ -64,14 +62,19 @@ export default function CreateDeathRegistration() {
       }
     };
     fetchMembers();
-  }, [memberSearch]);
+  }, []);
 
   useEffect(() => {
     if (!selectedMemberId) return;
     const selectedMember = members.find((m) => m.id === selectedMemberId);
     if (!selectedMember) return;
     setValue('deceasedName', selectedMember.name);
-    setValue('familyId', selectedMember.familyId);
+    // Extract string ID from potentially populated familyId object
+    const fid = selectedMember.familyId;
+    const familyIdStr = typeof fid === 'object' && fid !== null
+      ? (fid as any).id || (fid as any)._id
+      : fid;
+    setValue('familyId', familyIdStr);
     if (selectedMember.mahallId) {
       setValue('mahallId', selectedMember.mahallId);
     }
@@ -84,14 +87,14 @@ export default function CreateDeathRegistration() {
         deceasedName: data.deceasedName,
         deceasedId: data.deceasedId || undefined,
         deathDate: data.deathDate,
-        placeOfDeath: data.placeOfDeath,
-        causeOfDeath: data.causeOfDeath,
-        mahallId: data.mahallId,
-        familyId: data.familyId,
-        informantName: data.informantName,
-        informantRelation: data.informantRelation,
-        informantPhone: data.informantPhone,
-        remarks: data.remarks,
+        placeOfDeath: data.placeOfDeath || undefined,
+        causeOfDeath: data.causeOfDeath || undefined,
+        mahallId: data.mahallId || undefined,
+        familyId: data.familyId || undefined,
+        informantName: data.informantName || undefined,
+        informantRelation: data.informantRelation || undefined,
+        informantPhone: data.informantPhone || undefined,
+        remarks: data.remarks || undefined,
       });
       navigate(ROUTES.REGISTRATIONS.DEATH);
     } catch (err: any) {
@@ -124,17 +127,16 @@ export default function CreateDeathRegistration() {
             </div>
           )}
 
+          {Object.keys(errors).length > 0 && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 text-sm dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-200">
+              Please fix the highlighted errors before submitting.
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <h3 className="md:col-span-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
               Member Selection
             </h3>
-            <Input
-              label="Search Member"
-              value={memberSearch}
-              onChange={(e) => setMemberSearch(e.target.value)}
-              placeholder="Search by name or family"
-              className="md:col-span-2"
-            />
             <Select
               label="Select Member"
               options={[

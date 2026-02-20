@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiEye, FiX, FiFileText, FiClock, FiCheckCircle } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiX, FiFileText, FiClock, FiCheckCircle } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -139,6 +139,16 @@ export default function NikahRegistrationsList() {
             title="View"
           >
             <FiEye className="h-4 w-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/registrations/nikah/${row.id}/edit`);
+            }}
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 transition-colors"
+            title="Edit"
+          >
+            <FiEdit2 className="h-4 w-4" />
           </button>
         </div>
       ),

@@ -6,10 +6,12 @@ interface AuthState {
   user: User | null;
   token: string | null;
   currentTenantId: string | null;
+  currentInstituteId: string | null;
   isSuperAdmin: boolean;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setCurrentTenant: (tenantId: string | null) => void;
+  setCurrentInstitute: (instituteId: string | null) => void;
   logout: () => void;
 }
 
@@ -19,12 +21,14 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       currentTenantId: null,
+      currentInstituteId: null,
       isSuperAdmin: false,
       setUser: (user) =>
         set({
           user,
           isSuperAdmin: user?.isSuperAdmin || false,
           currentTenantId: user?.tenantId || null,
+          currentInstituteId: user?.instituteId || null,
         }),
       setToken: (token) => {
         set({ token });
@@ -35,11 +39,13 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       setCurrentTenant: (tenantId) => set({ currentTenantId: tenantId }),
+      setCurrentInstitute: (instituteId) => set({ currentInstituteId: instituteId }),
       logout: () =>
         set({
           user: null,
           token: null,
           currentTenantId: null,
+          currentInstituteId: null,
           isSuperAdmin: false,
         }),
     }),

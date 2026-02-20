@@ -62,12 +62,6 @@ export default function EditProgram() {
       setValue('contactNo', program.contactNo || '');
       setValue('email', program.email || '');
       setValue('status', program.status || 'active');
-      if (program.address) {
-        setValue('address.state', program.address.state || '');
-        setValue('address.district', program.address.district || '');
-        setValue('address.pinCode', program.address.pinCode || '');
-        setValue('address.postOffice', program.address.postOffice || '');
-      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load program');
     } finally {

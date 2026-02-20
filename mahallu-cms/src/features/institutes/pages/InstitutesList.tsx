@@ -203,7 +203,7 @@ export default function InstitutesList() {
               Institutes
             </h1>
             <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-              Manage institutes, programs, and madrasas
+              Manage institutes, madrasas, and other institutions
             </p>
           </div>
           <Breadcrumb items={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Institutes' }]} />
@@ -246,8 +246,10 @@ export default function InstitutesList() {
                 options={[
                   { value: 'all', label: 'All Types' },
                   { value: 'institute', label: 'Institute' },
-                  { value: 'program', label: 'Program' },
                   { value: 'madrasa', label: 'Madrasa' },
+                  { value: 'orphanage', label: 'Orphanage' },
+                  { value: 'hospital', label: 'Hospital' },
+                  { value: 'other', label: 'Other' },
                 ]}
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}

@@ -70,6 +70,11 @@ export const collectibleService = {
     return response.data.data;
   },
 
+  deleteVarisangya: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/collectibles/varisangya/${id}`);
+    return response.data;
+  },
+
   getNextReceiptNo: async (type: 'varisangya' | 'zakat') => {
     const response = await api.get<{ success: boolean; data: { receiptNo: string } }>(
       '/collectibles/receipt-next',
@@ -91,6 +96,16 @@ export const collectibleService = {
   createZakat: async (data: Partial<Zakat>) => {
     const response = await api.post<{ success: boolean; data: Zakat }>('/collectibles/zakat', data);
     return response.data.data;
+  },
+
+  updateZakat: async (id: string, data: Partial<Zakat>) => {
+    const response = await api.put<{ success: boolean; data: Zakat }>(`/collectibles/zakat/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteZakat: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/collectibles/zakat/${id}`);
+    return response.data;
   },
 
   // Wallet – API returns MongoDB docs with _id; normalize to id for frontend

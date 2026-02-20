@@ -8,18 +8,19 @@ export interface User {
   role: 'super_admin' | 'mahall' | 'survey' | 'institute' | 'member';
   tenantId?: string;
   memberId?: string;
+  instituteId?: string;
   status: 'active' | 'inactive';
   joiningDate: string;
   lastLogin?: string;
-  permissions?: Permission[];
+  permissions?: Permission;
   isSuperAdmin?: boolean;
 }
 
 export interface Permission {
-  view: boolean;
-  add: boolean;
-  edit: boolean;
-  delete: boolean;
+  view?: boolean;
+  add?: boolean;
+  edit?: boolean;
+  delete?: boolean;
 }
 
 export interface Family {
@@ -72,17 +73,57 @@ export interface Institute {
   name: string;
   place: string;
   joinDate: string;
-  type: 'institute' | 'program' | 'madrasa';
+  type: 'institute' | 'madrasa' | 'orphanage' | 'hospital' | 'other';
   description?: string;
   contactNo?: string;
   email?: string;
-  address?: {
-    state: string;
-    district: string;
-    pinCode?: string;
-    postOffice?: string;
-  };
   status?: 'active' | 'inactive';
+  createdAt: string;
+}
+
+export interface Employee {
+  id: string;
+  tenantId?: string;
+  instituteId: string;
+  instituteName?: string;
+  instituteType?: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  designation: string;
+  department?: string;
+  joinDate: string;
+  salary: number;
+  status: 'active' | 'inactive' | 'resigned' | 'terminated' | 'on_leave';
+  address?: string;
+  qualifications?: string;
+  bankAccount?: {
+    accountNumber: string;
+    bankName: string;
+    ifscCode: string;
+  };
+  createdAt: string;
+}
+
+export interface SalaryPayment {
+  id: string;
+  tenantId?: string;
+  instituteId: string;
+  employeeId: string;
+  employeeName?: string;
+  employeeDesignation?: string;
+  instituteName?: string;
+  month: number;
+  year: number;
+  baseSalary: number;
+  allowances: number;
+  deductions: number;
+  netAmount: number;
+  paymentDate: string;
+  paymentMethod: 'cash' | 'bank' | 'upi' | 'cheque';
+  referenceNo?: string;
+  status: 'paid' | 'pending' | 'cancelled';
+  remarks?: string;
   createdAt: string;
 }
 
@@ -136,5 +177,33 @@ export interface ApiResponse<T> {
 export interface ApiError {
   message: string;
   errors?: Record<string, string[]>;
+}
+
+export interface Asset {
+  id: string;
+  tenantId?: string;
+  name: string;
+  description?: string;
+  purchaseDate: string;
+  estimatedValue: number;
+  category: 'furniture' | 'electronics' | 'vehicle' | 'building' | 'land' | 'equipment' | 'other';
+  status: 'active' | 'in_use' | 'under_maintenance' | 'disposed' | 'damaged';
+  location?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AssetMaintenance {
+  id: string;
+  assetId: string;
+  tenantId?: string;
+  maintenanceDate: string;
+  description: string;
+  cost?: number;
+  performedBy?: string;
+  nextMaintenanceDate?: string;
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  createdAt: string;
+  updatedAt?: string;
 }
 

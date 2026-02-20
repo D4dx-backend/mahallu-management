@@ -19,7 +19,7 @@ api.interceptors.request.use(
     }
 
     // Add tenant ID header for tenant-based data filtering
-    const { currentTenantId, isSuperAdmin, user } = useAuthStore.getState();
+    const { currentTenantId, isSuperAdmin, user, currentInstituteId } = useAuthStore.getState();
     
     // For super admin: use selected tenant or no tenant (to see all)
     if (isSuperAdmin) {
@@ -32,6 +32,11 @@ api.interceptors.request.use(
       if (tenantId) {
         config.headers['x-tenant-id'] = tenantId;
       }
+    }
+
+    // Add institute ID header for institute-scoped users
+    if (currentInstituteId) {
+      config.headers['x-institute-id'] = currentInstituteId;
     }
 
     return config;

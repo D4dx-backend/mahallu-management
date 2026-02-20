@@ -11,14 +11,17 @@ import Input from '@/components/ui/Input';
 import { ROUTES } from '@/constants/routes';
 import { userService } from '@/services/userService';
 import { tenantService } from '@/services/tenantService';
+import { instituteService } from '@/services/instituteService';
 import { useAuthStore } from '@/store/authStore';
 import { Tenant } from '@/types/tenant';
+import { Institute } from '@/types';
 
 const userSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must not exceed 100 characters'),
   phone: z.string().regex(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   tenantId: z.string().optional(),
+  instituteId: z.string().min(1, 'Please select an institute'),
   permissions: z.object({
     view: z.boolean().default(false),
     add: z.boolean().default(false),
@@ -33,6 +36,7 @@ export default function CreateInstituteUser() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [institutes, setInstitutes] = useState<Institute[]>([]);
   const { isSuperAdmin, currentTenantId } = useAuthStore();
   const {
     register,
@@ -43,6 +47,7 @@ export default function CreateInstituteUser() {
     resolver: zodResolver(userSchema),
     defaultValues: {
       tenantId: currentTenantId || '',
+      instituteId: '',
       permissions: {
         view: false,
         add: false,
@@ -68,6 +73,18 @@ export default function CreateInstituteUser() {
     loadTenants();
   }, [isSuperAdmin]);
 
+  useEffect(() => {
+    const loadInstitutes = async () => {
+      try {
+        const result = await instituteService.getAll({ limit: 100 });
+        setInstitutes(result.data);
+      } catch (err) {
+        console.error('Error loading institutes:', err);
+      }
+    };
+    loadInstitutes();
+  }, []);
+
   const onSubmit = async (data: UserFormData) => {
     try {
       setError(null);
@@ -83,6 +100,7 @@ export default function CreateInstituteUser() {
         role: 'institute',
         password: '123456', // Default password
         tenantId: isSuperAdmin ? data.tenantId : undefined,
+        instituteId: data.instituteId,
       });
       navigate(ROUTES.USERS.INSTITUTE);
     } catch (err: any) {
@@ -152,6 +170,25 @@ export default function CreateInstituteUser() {
                   )}
                 </div>
               )}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Institute <span className="text-red-500">*</span>
+                </label>
+                <select
+                  {...register('instituteId')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                >
+                  <option value="">Select Institute</option>
+                  {institutes.map((inst) => (
+                    <option key={inst.id} value={inst.id}>
+                      {inst.name} ({inst.type})
+                    </option>
+                  ))}
+                </select>
+                {errors.instituteId && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.instituteId.message}</p>
+                )}
+              </div>
               <Input
                 label="Full Name"
                 {...register('name')}

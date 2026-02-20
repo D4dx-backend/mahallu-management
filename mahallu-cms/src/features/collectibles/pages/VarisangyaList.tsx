@@ -207,15 +207,33 @@ export default function VarisangyaList() {
     x && typeof x === 'object' ? x._id : (typeof x === 'string' ? x : undefined);
   const handleViewPdf = async (entry: Varisangya) => {
     try {
-      const isMember = Boolean(entry.memberId);
-      const payerName = isMember
-        ? (await memberService.getById(getId(entry.memberId)!)).name
-        : (await familyService.getById(getId(entry.familyId)!)).houseName;
+      let payerName: string | undefined;
+      let payerLabel: string;
+
+      const memberId = getId(entry.memberId);
+      const familyId = getId(entry.familyId);
+
+      if (entry.memberId && typeof entry.memberId === 'object' && entry.memberId.name) {
+        payerName = entry.memberId.name;
+        payerLabel = 'Member';
+      } else if (memberId) {
+        payerName = (await memberService.getById(memberId)).name;
+        payerLabel = 'Member';
+      } else if (entry.familyId && typeof entry.familyId === 'object' && entry.familyId.houseName) {
+        payerName = entry.familyId.houseName;
+        payerLabel = 'Family';
+      } else if (familyId) {
+        payerName = (await familyService.getById(familyId)).houseName;
+        payerLabel = 'Family';
+      } else {
+        payerName = '-';
+        payerLabel = 'Unknown';
+      }
 
       const invoiceDetails: InvoiceDetails = {
         title: 'Varisangya Payment',
         receiptNo: entry.receiptNo,
-        payerLabel: isMember ? 'Member' : 'Family',
+        payerLabel,
         payerName: payerName || '-',
         amount: entry.amount,
         paymentDate: entry.paymentDate,

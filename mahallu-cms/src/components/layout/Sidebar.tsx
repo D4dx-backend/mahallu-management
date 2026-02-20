@@ -25,9 +25,7 @@ function SubMenuPanel({ item, onClose, open }: SubMenuPanelProps) {
   const isAccessible = (menuItem: MenuItem) => {
     if (menuItem.superAdminOnly && !isSuperAdmin) return false;
     if (menuItem.allowedRoles && userRole) {
-      // Filter out 'member' role as it's not in the menu allowed roles
-      if (userRole === 'member') return false;
-      return menuItem.allowedRoles.includes(userRole as 'super_admin' | 'mahall' | 'survey' | 'institute');
+      return menuItem.allowedRoles.includes(userRole as 'super_admin' | 'mahall' | 'survey' | 'institute' | 'member');
     }
     return true;
   };
@@ -156,10 +154,12 @@ function SubMenuPanel({ item, onClose, open }: SubMenuPanelProps) {
 interface MenuItemComponentProps {
   item: MenuItem;
   isSelected: boolean;
+  isAnySubmenuOpen: boolean;
   onClick: () => void;
+  onDirectNavigate: () => void;
 }
 
-function MenuItemComponent({ item, isSelected, onClick }: MenuItemComponentProps) {
+function MenuItemComponent({ item, isSelected, isAnySubmenuOpen, onClick, onDirectNavigate }: MenuItemComponentProps) {
   const location = useLocation();
   const { isSuperAdmin, user } = useAuthStore();
   const Icon = item.icon as React.ComponentType<{ className?: string }>;
@@ -170,9 +170,7 @@ function MenuItemComponent({ item, isSelected, onClick }: MenuItemComponentProps
   const isAccessible = () => {
     if (item.superAdminOnly && !isSuperAdmin) return false;
     if (item.allowedRoles && userRole) {
-      // Filter out 'member' role as it's not in the menu allowed roles
-      if (userRole === 'member') return false;
-      return item.allowedRoles.includes(userRole as 'super_admin' | 'mahall' | 'survey' | 'institute');
+      return item.allowedRoles.includes(userRole as 'super_admin' | 'mahall' | 'survey' | 'institute' | 'member');
     }
     return true;
   };
@@ -186,6 +184,11 @@ function MenuItemComponent({ item, isSelected, onClick }: MenuItemComponentProps
       child.children?.some(subChild => subChild.path === location.pathname)
     ));
 
+  // When a submenu parent is open, only highlight that parent — suppress
+  // route-based highlighting on all other items so two items don't appear
+  // green at the same time.
+  const shouldHighlight = isSelected || (isActive && !isAnySubmenuOpen);
+
   if (hasChildren) {
     return (
       <li>
@@ -193,14 +196,14 @@ function MenuItemComponent({ item, isSelected, onClick }: MenuItemComponentProps
           onClick={onClick}
           className={cn(
             'group w-full flex flex-col items-center justify-center py-3.5 px-2 text-xs transition-all duration-200 border-0 outline-none focus:outline-none',
-            isSelected || isActive
+            shouldHighlight
               ? 'text-primary-700 dark:text-primary-400'
               : 'text-gray-900 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white'
           )}
         >
           <Icon className={cn(
             'h-6 w-6 mb-1.5 transition-colors',
-            isSelected || isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'
+            shouldHighlight ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'
           )} />
           <span className="text-center leading-tight">{item.label}</span>
         </button>
@@ -212,16 +215,17 @@ function MenuItemComponent({ item, isSelected, onClick }: MenuItemComponentProps
     <li>
       <Link
         to={item.path || '#'}
+        onClick={onDirectNavigate}
         className={cn(
           'group flex flex-col items-center justify-center py-3.5 px-2 text-xs transition-all duration-200 border-0 outline-none focus:outline-none',
-          isActive
+          shouldHighlight
             ? 'text-primary-700 dark:text-primary-400'
             : 'text-gray-900 dark:text-gray-100 hover:text-gray-900 dark:hover:text-white'
         )}
       >
         <Icon className={cn(
           'h-6 w-6 mb-1.5 transition-colors',
-          isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'
+          shouldHighlight ? 'text-primary-600 dark:text-primary-400' : 'text-gray-900 dark:text-gray-100'
         )} />
         <span className="text-center leading-tight">{item.label}</span>
       </Link>
@@ -236,33 +240,10 @@ export default function Sidebar() {
   const location = useLocation();
   const setSubmenuOpen = useLayoutStore((s) => s.setSubmenuOpen);
 
-  // Auto-select menu item based on current route
+  // Close submenu panel on route change — route-based highlighting
+  // is already handled by `isActive` in MenuItemComponent
   useEffect(() => {
-    const findActiveMenuItem = () => {
-      for (const item of menuItems) {
-        if (item.path === location.pathname) {
-          setSelectedMenuItem(null);
-          return;
-        }
-        if (item.children) {
-          for (const child of item.children) {
-            if (child.path === location.pathname) {
-              setSelectedMenuItem(item);
-              return;
-            }
-            if (child.children) {
-              for (const subChild of child.children) {
-                if (subChild.path === location.pathname) {
-                  setSelectedMenuItem(item);
-                  return;
-                }
-              }
-            }
-          }
-        }
-      }
-    };
-    findActiveMenuItem();
+    setSelectedMenuItem(null);
   }, [location.pathname]);
 
   const handleMenuClick = (item: MenuItem) => {
@@ -316,7 +297,9 @@ export default function Sidebar() {
                   key={item.id} 
                   item={item} 
                   isSelected={selectedMenuItem?.id === item.id}
+                  isAnySubmenuOpen={selectedMenuItem !== null}
                   onClick={() => handleMenuClick(item)}
+                  onDirectNavigate={handleCloseSubMenu}
                 />
               ))}
             </ul>

@@ -33,6 +33,15 @@ export interface ActivityTimelineData {
   value: number;
 }
 
+export interface FinancialSummary {
+  monthlyIncome: number;
+  monthlyExpense: number;
+  monthlyNet: number;
+  transactionCount: number;
+  totalBankBalance: number;
+  bankAccountCount: number;
+}
+
 export const dashboardService = {
   getStats: async () => {
     const response = await api.get<{ success: boolean; data: DashboardStats }>('/dashboard/stats');
@@ -50,6 +59,11 @@ export const dashboardService = {
     const response = await api.get<{ success: boolean; data: ActivityTimelineData[] }>('/dashboard/activity-timeline', {
       params: { days },
     });
+    return response.data.data;
+  },
+
+  getFinancialSummary: async () => {
+    const response = await api.get<{ success: boolean; data: FinancialSummary }>('/dashboard/financial-summary');
     return response.data.data;
   },
 };

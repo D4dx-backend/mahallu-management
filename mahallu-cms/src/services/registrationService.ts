@@ -81,6 +81,11 @@ export const registrationService = {
     return response.data.data;
   },
 
+  updateNikah: async (id: string, data: Partial<NikahRegistration>) => {
+    const response = await api.put<{ success: boolean; data: NikahRegistration }>(`/registrations/nikah/${id}`, data);
+    return response.data.data;
+  },
+
   // Death Registrations
   getAllDeath: async (params?: { status?: string; search?: string; page?: number; limit?: number }) => {
     const response = await api.get<{ success: boolean; data: DeathRegistration[]; pagination?: any }>('/registrations/death', {
@@ -100,6 +105,11 @@ export const registrationService = {
 
   createDeath: async (data: Partial<DeathRegistration>) => {
     const response = await api.post<{ success: boolean; data: DeathRegistration }>('/registrations/death', data);
+    return response.data.data;
+  },
+
+  updateDeath: async (id: string, data: Partial<DeathRegistration>) => {
+    const response = await api.put<{ success: boolean; data: DeathRegistration }>(`/registrations/death/${id}`, data);
     return response.data.data;
   },
 

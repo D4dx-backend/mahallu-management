@@ -40,7 +40,8 @@ import {
   FiCast,
   FiStar,
   FiHelpCircle,
-  FiUser
+  FiUser,
+  FiPackage
 } from 'react-icons/fi';
 
 export interface MenuItem {
@@ -50,7 +51,7 @@ export interface MenuItem {
   path?: string;
   children?: MenuItem[];
   superAdminOnly?: boolean;
-  allowedRoles?: ('super_admin' | 'mahall' | 'survey' | 'institute')[];
+  allowedRoles?: ('super_admin' | 'mahall' | 'survey' | 'institute' | 'member')[];
 }
 
 export const menuItems: MenuItem[] = [
@@ -59,6 +60,14 @@ export const menuItems: MenuItem[] = [
     label: 'Dashboard',
     icon: FiHome,
     path: '/dashboard',
+    allowedRoles: ['super_admin', 'mahall', 'survey', 'institute'],
+  },
+  {
+    id: 'member-overview',
+    label: 'My Dashboard',
+    icon: FiUserCheck,
+    path: '/member/overview',
+    allowedRoles: ['member'],
   },
   
   // Core Data Management - Most Used
@@ -123,15 +132,51 @@ export const menuItems: MenuItem[] = [
     allowedRoles: ['super_admin', 'mahall'],
   },
   
-  // Education
+  // Education & Institute Management
   {
     id: 'education',
-    label: 'Education',
+    label: 'Institute Management',
     icon: FiBook,
-    allowedRoles: ['super_admin', 'mahall'],
+    allowedRoles: ['super_admin', 'mahall', 'institute'],
     children: [
-      { id: 'madrasa', label: 'Madrasa', icon: FiBookOpen, path: '/madrasa', allowedRoles: ['super_admin', 'mahall'] },
-      { id: 'institutes', label: 'Institutes', icon: FiTarget, path: '/institutes', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+      {
+        id: 'institutes-staff',
+        label: 'Institutes & Staff',
+        icon: FiTarget,
+        allowedRoles: ['super_admin', 'mahall', 'institute'],
+        children: [
+          { id: 'institutes', label: 'Institutes', icon: FiTarget, path: '/institutes', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'employees', label: 'Employees', icon: FiUser, path: '/employees', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'salary', label: 'Salary', icon: FiCreditCard, path: '/salary', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+        ],
+      },
+      {
+        id: 'accounts-setup',
+        label: 'Accounts Setup',
+        icon: FiLayers,
+        allowedRoles: ['super_admin', 'mahall', 'institute'],
+        children: [
+          { id: 'institute-accounts', label: 'Institute Accounts', icon: FiBriefcase, path: '/master-accounts/institute', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'categories', label: 'Categories', icon: FiList, path: '/master-accounts/categories', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'ledgers', label: 'Ledgers', icon: FiBookOpen, path: '/master-accounts/ledgers', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'ledger-items', label: 'Ledger Items', icon: FiFileMinus, path: '/master-accounts/ledger-items', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+        ],
+      },
+      {
+        id: 'financial-reports',
+        label: 'Financial Reports',
+        icon: FiBarChart2,
+        allowedRoles: ['super_admin', 'mahall', 'institute'],
+        children: [
+          { id: 'day-book', label: 'Day Book', icon: FiBookOpen, path: '/accounting/day-book', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'trial-balance', label: 'Trial Balance', icon: FiBarChart2, path: '/accounting/trial-balance', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'balance-sheet', label: 'Balance Sheet', icon: FiFileText, path: '/accounting/balance-sheet', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'ledger-report', label: 'Ledger Report', icon: FiBookOpen, path: '/accounting/ledger-report', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'income-expenditure', label: 'Income & Expenditure', icon: FiFileText, path: '/accounting/income-expenditure', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+          { id: 'consolidated-report', label: 'Consolidated Report', icon: FiBarChart2, path: '/accounting/consolidated', allowedRoles: ['super_admin', 'mahall'] },
+          { id: 'petty-cash', label: 'Petty Cash', icon: FiDollarSign, path: '/accounting/petty-cash', allowedRoles: ['super_admin', 'mahall', 'institute'] },
+        ],
+      },
     ],
   },
   
@@ -145,6 +190,15 @@ export const menuItems: MenuItem[] = [
       { id: 'all-committees', label: 'All Committees', icon: FiList, path: '/committees', allowedRoles: ['super_admin', 'mahall'] },
       { id: 'all-meetings', label: 'All Meetings', icon: FiClock, path: '/committees/meetings', allowedRoles: ['super_admin', 'mahall'] },
     ],
+  },
+  
+  // Asset Management
+  {
+    id: 'assets',
+    label: 'Asset Management',
+    icon: FiPackage,
+    path: '/assets',
+    allowedRoles: ['super_admin', 'mahall'],
   },
   
   // Reports
@@ -187,19 +241,13 @@ export const menuItems: MenuItem[] = [
     ],
   },
   
-  // Master Accounts (for Institute users)
+  // Wallets (Mahallu-level wallets - separate from institute accounts)
   {
-    id: 'master-accounts',
-    label: 'Master Accounts',
-    icon: FiLayers,
-    allowedRoles: ['super_admin', 'mahall', 'institute'],
-    children: [
-      { id: 'institute-accounts', label: 'Institute Accounts', icon: FiBriefcase, path: '/master-accounts/institute', allowedRoles: ['super_admin', 'mahall', 'institute'] },
-      { id: 'categories', label: 'Categories', icon: FiList, path: '/master-accounts/categories', allowedRoles: ['super_admin', 'mahall', 'institute'] },
-      { id: 'wallets', label: 'Wallets', icon: FiCreditCard, path: '/master-accounts/wallets', allowedRoles: ['super_admin', 'mahall', 'institute'] },
-      { id: 'ledgers', label: 'Ledgers', icon: FiBookOpen, path: '/master-accounts/ledgers', allowedRoles: ['super_admin', 'mahall', 'institute'] },
-      { id: 'ledger-items', label: 'Ledger Items', icon: FiFileMinus, path: '/master-accounts/ledger-items', allowedRoles: ['super_admin', 'mahall', 'institute'] },
-    ],
+    id: 'wallets',
+    label: 'Wallets',
+    icon: FiCreditCard,
+    path: '/master-accounts/wallets',
+    allowedRoles: ['super_admin', 'mahall'],
   },
   
   // Settings & Administration

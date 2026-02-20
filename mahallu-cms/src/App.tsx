@@ -25,10 +25,22 @@ import ProgramsList from './features/programs/pages/ProgramsList';
 import CreateProgram from './features/programs/pages/CreateProgram';
 import EditProgram from './features/programs/pages/EditProgram';
 import ProgramDetail from './features/programs/pages/ProgramDetail';
-import MadrasaList from './features/madrasa/pages/MadrasaList';
-import CreateMadrasa from './features/madrasa/pages/CreateMadrasa';
-import EditMadrasa from './features/madrasa/pages/EditMadrasa';
-import MadrasaDetail from './features/madrasa/pages/MadrasaDetail';
+import EmployeesList from './features/employees/pages/EmployeesList';
+import CreateEmployee from './features/employees/pages/CreateEmployee';
+import EmployeeDetail from './features/employees/pages/EmployeeDetail';
+import EditEmployee from './features/employees/pages/EditEmployee';
+import SalaryList from './features/salary/pages/SalaryList';
+import CreateSalaryPayment from './features/salary/pages/CreateSalaryPayment';
+import SalaryDetail from './features/salary/pages/SalaryDetail';
+import SalarySummary from './features/salary/pages/SalarySummary';
+import DayBook from './features/accounting/pages/DayBook';
+import TrialBalance from './features/accounting/pages/TrialBalance';
+import BalanceSheet from './features/accounting/pages/BalanceSheet';
+import LedgerReport from './features/accounting/pages/LedgerReport';
+import IncomeExpenditure from './features/accounting/pages/IncomeExpenditure';
+import ConsolidatedReport from './features/accounting/pages/ConsolidatedReport';
+import PettyCashList from './features/accounting/pages/PettyCashList';
+import PettyCashDetail from './features/accounting/pages/PettyCashDetail';
 import CommitteesList from './features/committees/pages/CommitteesList';
 import CreateCommittee from './features/committees/pages/CreateCommittee';
 import CommitteeDetail from './features/committees/pages/CommitteeDetail';
@@ -46,6 +58,8 @@ import NOCList from './features/registrations/pages/NOCList';
 import NOCDetail from './features/registrations/pages/NOCDetail';
 import CreateNOC from './features/registrations/pages/CreateNOC';
 import EditNOC from './features/registrations/pages/EditNOC';
+import EditNikahRegistration from './features/registrations/pages/EditNikahRegistration';
+import EditDeathRegistration from './features/registrations/pages/EditDeathRegistration';
 import CollectionsOverview from './features/collectibles/pages/CollectionsOverview';
 import VarisangyaList from './features/collectibles/pages/VarisangyaList';
 import CreateVarisangya from './features/collectibles/pages/CreateVarisangya';
@@ -87,10 +101,17 @@ import CreateTenant from './features/admin/pages/CreateTenant';
 import TenantDetails from './features/admin/pages/TenantDetails';
 import EditTenant from './features/admin/pages/EditTenant';
 import MahallMain from './features/admin/pages/MahallMain';
+import AssetsList from './features/assets/pages/AssetsList';
+import CreateAsset from './features/assets/pages/CreateAsset';
+import EditAsset from './features/assets/pages/EditAsset';
+import AssetDetail from './features/assets/pages/AssetDetail';
 import { ROUTES } from './constants/routes';
+import MemberOverview from './features/member-portal/pages/MemberOverview';
+import { useAuthStore } from './store/authStore';
 
 function App() {
   const { theme } = useThemeStore();
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     applyTheme();
@@ -109,16 +130,26 @@ function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Navigate to="/dashboard" replace />
+              <Navigate to={user?.role === 'member' ? ROUTES.MEMBER.OVERVIEW : ROUTES.DASHBOARD} replace />
             </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute allowedRoles={['super_admin', 'mahall', 'survey', 'institute']}>
               <MainLayout>
                 <Dashboard />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.MEMBER.OVERVIEW}
+          element={
+            <ProtectedRoute allowedRoles={['member']}>
+              <MainLayout>
+                <MemberOverview />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -400,43 +431,165 @@ function App() {
             </ProtectedRoute>
           }
         />
-        {/* Madrasa Routes */}
+        {/* Employee Routes */}
         <Route
-          path={ROUTES.MADRASA.LIST}
+          path={ROUTES.EMPLOYEES.LIST}
           element={
             <ProtectedRoute>
               <MainLayout>
-                <MadrasaList />
+                <EmployeesList />
               </MainLayout>
             </ProtectedRoute>
           }
         />
         <Route
-          path={ROUTES.MADRASA.CREATE}
+          path={ROUTES.EMPLOYEES.CREATE}
           element={
             <ProtectedRoute>
               <MainLayout>
-                <CreateMadrasa />
+                <CreateEmployee />
               </MainLayout>
             </ProtectedRoute>
           }
         />
         <Route
-          path={ROUTES.MADRASA.DETAIL(':id')}
+          path={ROUTES.EMPLOYEES.DETAIL(':id')}
           element={
             <ProtectedRoute>
               <MainLayout>
-                <MadrasaDetail />
+                <EmployeeDetail />
               </MainLayout>
             </ProtectedRoute>
           }
         />
         <Route
-          path="/madrasa/:id/edit"
+          path={ROUTES.EMPLOYEES.EDIT(':id')}
           element={
             <ProtectedRoute>
               <MainLayout>
-                <EditMadrasa />
+                <EditEmployee />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Salary Routes */}
+        <Route
+          path={ROUTES.SALARY.LIST}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SalaryList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.SALARY.CREATE}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CreateSalaryPayment />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.SALARY.SUMMARY}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SalarySummary />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.SALARY.DETAIL(':id')}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SalaryDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Accounting Report Routes */}
+        <Route
+          path={ROUTES.ACCOUNTING.DAY_BOOK}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <DayBook />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ACCOUNTING.TRIAL_BALANCE}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TrialBalance />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ACCOUNTING.BALANCE_SHEET}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <BalanceSheet />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ACCOUNTING.LEDGER_REPORT}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <LedgerReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ACCOUNTING.INCOME_EXPENDITURE}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <IncomeExpenditure />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ACCOUNTING.CONSOLIDATED}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ConsolidatedReport />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ACCOUNTING.PETTY_CASH}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <PettyCashList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/petty-cash/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <PettyCashDetail />
               </MainLayout>
             </ProtectedRoute>
           }
@@ -533,6 +686,48 @@ function App() {
           }
         />
         {/* Registrations Routes */}
+        {/* Asset Management Routes */}
+        <Route
+          path={ROUTES.ASSETS.LIST}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AssetsList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ASSETS.CREATE}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CreateAsset />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ASSETS.DETAIL(':id')}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AssetDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.ASSETS.EDIT(':id')}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EditAsset />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Registration Routes */}
         <Route
           path={ROUTES.REGISTRATIONS.NIKAH}
           element={
@@ -564,6 +759,16 @@ function App() {
           }
         />
         <Route
+          path="/registrations/nikah/:id/edit"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EditNikahRegistration />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path={ROUTES.REGISTRATIONS.DEATH}
           element={
             <ProtectedRoute>
@@ -589,6 +794,16 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <CreateDeathRegistration />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/registrations/death/:id/edit"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EditDeathRegistration />
               </MainLayout>
             </ProtectedRoute>
           }

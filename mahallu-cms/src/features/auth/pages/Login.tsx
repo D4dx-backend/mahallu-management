@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card from '@/components/ui/Card';
 import { BRAND_NAME, LOGO_PATH } from '@/constants/theme';
+import { ROUTES } from '@/constants/routes';
 
 const phoneSchema = z.object({
   phone: z.string().min(10, 'Phone number must be at least 10 digits'),
@@ -87,7 +88,7 @@ export default function Login() {
       });
       setUser(response.user);
       setToken(response.token);
-      navigate('/dashboard');
+      navigate(response.user.role === 'member' ? ROUTES.MEMBER.OVERVIEW : ROUTES.DASHBOARD);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
     } finally {

@@ -11,20 +11,15 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { ROUTES } from '@/constants/routes';
 import { instituteService } from '@/services/instituteService';
-import { STATES, getDistrictsByState } from '@/constants/locations';
 
 const instituteSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   place: z.string().min(1, 'Place is required'),
-  type: z.enum(['institute', 'program', 'madrasa']),
+  type: z.enum(['institute', 'madrasa', 'orphanage', 'hospital', 'other']),
   joinDate: z.string().min(1, 'Join Date is required'),
   description: z.string().optional(),
   contactNo: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
-  'address.state': z.string().optional(),
-  'address.district': z.string().optional(),
-  'address.pinCode': z.string().optional(),
-  'address.postOffice': z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
 });
 
@@ -36,8 +31,6 @@ export default function CreateInstitute() {
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<InstituteFormData>({
     resolver: zodResolver(instituteSchema),
@@ -45,22 +38,8 @@ export default function CreateInstitute() {
       type: 'institute',
       status: 'active',
       joinDate: new Date().toISOString().split('T')[0],
-      'address.state': 'Kerala',
-      'address.district': '',
     },
   });
-
-  // Watch state changes to update districts
-  const selectedState = watch('address.state');
-  
-  // Get districts based on selected state
-  const districtOptions = selectedState ? getDistrictsByState(selectedState) : [];
-  
-  // Reset district when state changes
-  const handleStateChange = (value: string) => {
-    setValue('address.state', value);
-    setValue('address.district', ''); // Reset district when state changes
-  };
 
   const onSubmit = async (data: InstituteFormData) => {
     try {
@@ -75,15 +54,6 @@ export default function CreateInstitute() {
         email: data.email || undefined,
         status: data.status || 'active',
       };
-
-      if (data['address.state'] || data['address.district']) {
-        instituteData.address = {
-          state: data['address.state'],
-          district: data['address.district'],
-          pinCode: data['address.pinCode'],
-          postOffice: data['address.postOffice'],
-        };
-      }
 
       await instituteService.create(instituteData);
       navigate(ROUTES.INSTITUTES.LIST);
@@ -101,7 +71,7 @@ export default function CreateInstitute() {
             Create Institute
           </h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Add a new institute, program, or madrasa
+            Add a new institute
           </p>
         </div>
         <Breadcrumb
@@ -134,8 +104,10 @@ export default function CreateInstitute() {
               label="Type"
               options={[
                 { value: 'institute', label: 'Institute' },
-                { value: 'program', label: 'Program' },
                 { value: 'madrasa', label: 'Madrasa' },
+                { value: 'orphanage', label: 'Orphanage' },
+                { value: 'hospital', label: 'Hospital' },
+                { value: 'other', label: 'Other' },
               ]}
               {...register('type')}
               error={errors.type?.message}
@@ -173,32 +145,6 @@ export default function CreateInstitute() {
               {...register('description')}
               placeholder="Description"
               className="md:col-span-2"
-            />
-            <Select
-              label="State"
-              options={STATES}
-              {...register('address.state', {
-                onChange: (e) => handleStateChange(e.target.value),
-              })}
-            />
-            <Select
-              label="District"
-              options={[
-                { value: '', label: 'Select district...' },
-                ...districtOptions,
-              ]}
-              {...register('address.district')}
-              disabled={!selectedState || districtOptions.length === 0}
-            />
-            <Input
-              label="Pin Code"
-              {...register('address.pinCode')}
-              placeholder="Pin Code"
-            />
-            <Input
-              label="Post Office"
-              {...register('address.postOffice')}
-              placeholder="Post Office"
             />
             <Select
               label="Status"
