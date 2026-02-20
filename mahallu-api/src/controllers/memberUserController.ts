@@ -8,6 +8,7 @@ import Institute from '../models/Institute';
 import { Feed } from '../models/Social';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
+import User from '../models/User';
 
 // Get own profile
 export const getOwnProfile = async (req: AuthRequest, res: Response) => {
@@ -30,6 +31,135 @@ export const getOwnProfile = async (req: AuthRequest, res: Response) => {
     }
 
     res.json({ success: true, data: member });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get member overview (own details + family + mahallu stats + varusankhya + assigned options)
+export const getOwnOverview = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.memberId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member profile not linked to user account',
+      });
+    }
+
+    const member = await Member.findById(req.user.memberId)
+      .populate('familyId', 'houseName mahallId contactNo address varisangyaGrade wardNumber houseNo area place status');
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found',
+      });
+    }
+
+    const familyDetails = member.familyId && typeof member.familyId === 'object' && 'houseName' in member.familyId
+      ? (member.familyId as any)
+      : null;
+
+    const familyId = member.familyId && typeof member.familyId === 'object' ? member.familyId._id : member.familyId;
+
+    const [familyMembers, tenantUsersTotal, tenantFamiliesTotal, tenantMembersTotal, varisangyaTotals, zakatTotals, latestVarisangya, latestZakat] = await Promise.all([
+      familyId
+        ? Member.find({
+            familyId,
+            tenantId: member.tenantId,
+            status: 'active',
+          })
+            .sort({ createdAt: -1 })
+            .select('name phone age gender mahallId familyName status createdAt')
+        : Promise.resolve([]),
+      User.countDocuments({ tenantId: member.tenantId }),
+      Family.countDocuments({ tenantId: member.tenantId }),
+      Member.countDocuments({ tenantId: member.tenantId }),
+      Varisangya.aggregate([
+        {
+          $match: {
+            tenantId: member.tenantId,
+            ...(familyId ? { familyId } : { memberId: member._id }),
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$amount' },
+            paymentCount: { $sum: 1 },
+          },
+        },
+      ]),
+      Zakat.aggregate([
+        {
+          $match: {
+            tenantId: member.tenantId,
+            payerId: member._id,
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$amount' },
+            paymentCount: { $sum: 1 },
+          },
+        },
+      ]),
+      Varisangya.findOne({
+        tenantId: member.tenantId,
+        $or: [
+          { memberId: member._id },
+          ...(familyId ? [{ familyId }] : []),
+        ],
+      })
+        .sort({ paymentDate: -1, createdAt: -1 })
+        .select('receiptNo paymentDate amount'),
+      Zakat.findOne({
+        tenantId: member.tenantId,
+        payerId: member._id,
+      })
+        .sort({ paymentDate: -1, createdAt: -1 })
+        .select('receiptNo paymentDate amount'),
+    ]);
+
+    const varisangyaSummary = varisangyaTotals[0] || { totalAmount: 0, paymentCount: 0 };
+    const zakatSummary = zakatTotals[0] || { totalAmount: 0, paymentCount: 0 };
+
+    const data = {
+      member,
+      family: {
+        details: familyDetails,
+        members: familyMembers,
+        financialSummary: {
+          varisangyaTotal: varisangyaSummary.totalAmount,
+          varisangyaCount: varisangyaSummary.paymentCount,
+          zakatTotal: zakatSummary.totalAmount,
+          zakatCount: zakatSummary.paymentCount,
+        },
+      },
+      mahalluStatistics: {
+        users: tenantUsersTotal,
+        families: tenantFamiliesTotal,
+        members: tenantMembersTotal,
+      },
+      varusankhyaDetails: {
+        familyMahallId: familyDetails?.mahallId || null,
+        memberMahallId: member.mahallId || null,
+        varisangyaGrade: familyDetails?.varisangyaGrade || null,
+        latestVarisangyaReceiptNo: latestVarisangya?.receiptNo || null,
+        latestZakatReceiptNo: latestZakat?.receiptNo || null,
+        latestVarisangyaPaymentDate: latestVarisangya?.paymentDate || null,
+        latestZakatPaymentDate: latestZakat?.paymentDate || null,
+      },
+      assignedOptions: {
+        view: req.user.permissions?.view ?? false,
+        add: req.user.permissions?.add ?? false,
+        edit: req.user.permissions?.edit ?? false,
+        delete: req.user.permissions?.delete ?? false,
+      },
+    };
+
+    res.json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

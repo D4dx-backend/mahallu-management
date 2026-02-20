@@ -46,12 +46,20 @@ export const getAllFamilies = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getFamilyById = async (req: Request, res: Response) => {
+export const getFamilyById = async (req: AuthRequest, res: Response) => {
   try {
     const family = await Family.findById(req.params.id);
     if (!family) {
       return res.status(404).json({ success: false, message: 'Family not found' });
     }
+
+    if (!req.isSuperAdmin && req.tenantId && family.tenantId.toString() !== req.tenantId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Family does not belong to your tenant',
+      });
+    }
+
     res.json({ success: true, data: family });
   } catch (error: any) {
     console.error('Error fetching family:', error);

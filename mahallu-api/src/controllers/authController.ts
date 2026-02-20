@@ -7,6 +7,33 @@ import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { normalizeIndianPhone, sendWhatsAppMessage } from '../services/dxingService';
 
+const getPhoneVariants = (input: string): string[] => {
+  const variants = new Set<string>();
+  const raw = (input || '').trim();
+
+  if (raw) {
+    variants.add(raw);
+  }
+
+  const digits = raw.replace(/\D/g, '');
+  if (digits) {
+    variants.add(digits);
+  }
+
+  let local = digits;
+  if (local.startsWith('91') && local.length === 12) {
+    local = local.slice(2);
+  }
+
+  if (local.length === 10) {
+    variants.add(local);
+    variants.add(`91${local}`);
+    variants.add(`+91${local}`);
+  }
+
+  return Array.from(variants);
+};
+
 export const login = async (req: Request, res: Response) => {
   try {
     const { phone, password } = req.body;
@@ -18,12 +45,14 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
+    const phoneVariants = getPhoneVariants(phone);
+
     // Try to find user by phone
-    let user = await User.findOne({ phone }).select('+password');
+    let user = await User.findOne({ phone: { $in: phoneVariants } }).select('+password');
     
     // If no user found, check if it's a member trying to login
     if (!user) {
-      const member = await Member.findOne({ phone });
+      const member = await Member.findOne({ phone: { $in: phoneVariants } });
       if (member) {
         // Find member user account
         user = await User.findOne({ memberId: member._id, role: 'member' }).select('+password');
@@ -54,6 +83,13 @@ export const login = async (req: Request, res: Response) => {
       return res.status(403).json({
         success: false,
         message: 'Account is inactive',
+      });
+    }
+
+    if (user.role === 'member') {
+      return res.status(403).json({
+        success: false,
+        message: 'Member login is OTP-only. Please use send OTP and verify OTP.',
       });
     }
 
@@ -144,21 +180,62 @@ export const sendOTP = async (req: Request, res: Response) => {
 
     console.info(`[OTP] send-otp requested for phone=${phone} normalized=${normalizedPhone} env=${process.env.NODE_ENV}`);
 
+    const phoneVariants = Array.from(
+      new Set([...getPhoneVariants(phone), localPhone, normalizedPhone, `+${normalizedPhone}`])
+    );
+
     // Check if user exists
-    let user = await User.findOne({ phone: localPhone });
+    let user = await User.findOne({ phone: { $in: phoneVariants } });
     
     // If no user found, check if it's a member trying to login
     if (!user) {
-      const member = await Member.findOne({ phone: localPhone });
+      const member = await Member.findOne({ phone: { $in: phoneVariants } });
       if (member) {
         // Check if member user account exists
         user = await User.findOne({ memberId: member._id, role: 'member' });
         
         if (!user) {
-          return res.status(404).json({
-            success: false,
-            message: 'Member account not found. Please contact admin to create your account.',
+          const existingPhoneUser = await User.findOne({
+            phone: { $in: phoneVariants },
+            tenantId: member.tenantId,
           });
+
+          if (existingPhoneUser) {
+            return res.status(409).json({
+              success: false,
+              message: 'Phone number is already linked to another account in this tenant.',
+            });
+          }
+
+          const defaultMemberPassword = process.env.DEFAULT_MEMBER_PASSWORD || '123456';
+          const hashedPassword = await bcrypt.hash(defaultMemberPassword, 10);
+
+          try {
+            user = await User.create({
+              name: member.name,
+              phone: localPhone,
+              role: 'member',
+              tenantId: member.tenantId,
+              memberId: member._id,
+              status: member.status === 'active' ? 'active' : 'inactive',
+              isSuperAdmin: false,
+              permissions: {
+                view: true,
+                add: false,
+                edit: false,
+                delete: false,
+              },
+              password: hashedPassword,
+            });
+          } catch (createError: any) {
+            if (createError?.code === 11000) {
+              user = await User.findOne({ memberId: member._id, role: 'member' });
+            }
+
+            if (!user) {
+              throw createError;
+            }
+          }
         }
       } else {
         return res.status(404).json({
@@ -355,12 +432,16 @@ export const verifyOTP = async (req: Request, res: Response) => {
       });
     }
 
+    const phoneVariants = Array.from(
+      new Set([...getPhoneVariants(phone), localPhone, normalizedPhone, `+${normalizedPhone}`])
+    );
+
     // Find user
-    let user = await User.findOne({ phone: localPhone });
+    let user = await User.findOne({ phone: { $in: phoneVariants } });
     
     // If no user found, check if it's a member trying to login
     if (!user) {
-      const member = await Member.findOne({ phone: localPhone });
+      const member = await Member.findOne({ phone: { $in: phoneVariants } });
       if (member) {
         // Find member user account
         user = await User.findOne({ memberId: member._id, role: 'member' });

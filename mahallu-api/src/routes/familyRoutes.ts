@@ -6,7 +6,7 @@ import {
   updateFamily,
   deleteFamily,
 } from '../controllers/familyController';
-import { authMiddleware } from '../middleware/authMiddleware';
+import { authMiddleware, allowRoles } from '../middleware/authMiddleware';
 import { tenantMiddleware, tenantFilter } from '../middleware/tenantMiddleware';
 import { validationHandler } from '../middleware/validationHandler';
 import {
@@ -22,6 +22,7 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 router.use(tenantFilter);
+router.use(allowRoles(['super_admin', 'mahall', 'survey', 'institute']));
 
 /**
  * @swagger

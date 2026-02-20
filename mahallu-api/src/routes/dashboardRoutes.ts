@@ -1,6 +1,6 @@
 import express from 'express';
 import { getDashboardStats, getRecentFamilies, getActivityTimeline, getFinancialSummary } from '../controllers/dashboardController';
-import { authMiddleware } from '../middleware/authMiddleware';
+import { authMiddleware, allowRoles } from '../middleware/authMiddleware';
 import { tenantMiddleware } from '../middleware/tenantMiddleware';
 
 const router = express.Router();
@@ -8,8 +8,8 @@ const router = express.Router();
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 
-router.get('/recent-families', getRecentFamilies);
-router.get('/activity-timeline', getActivityTimeline);
+router.get('/recent-families', allowRoles(['super_admin', 'mahall', 'survey', 'institute']), getRecentFamilies);
+router.get('/activity-timeline', allowRoles(['super_admin', 'mahall', 'survey', 'institute']), getActivityTimeline);
 
 /**
  * @swagger
@@ -116,8 +116,8 @@ router.get('/activity-timeline', getActivityTimeline);
  *       500:
  *         description: Internal server error
  */
-router.get('/stats', getDashboardStats);
-router.get('/financial-summary', getFinancialSummary);
+router.get('/stats', allowRoles(['super_admin', 'mahall', 'survey', 'institute', 'member']), getDashboardStats);
+router.get('/financial-summary', allowRoles(['super_admin', 'mahall', 'institute']), getFinancialSummary);
 
 export default router;
 

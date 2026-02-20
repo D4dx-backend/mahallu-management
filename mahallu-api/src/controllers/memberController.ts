@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import Member from '../models/Member';
 import Family from '../models/Family';
+import User from '../models/User';
+import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
 import { verifyTenantOwnership } from '../utils/tenantCheck';
@@ -134,6 +136,20 @@ export const createMember = async (req: AuthRequest, res: Response) => {
       memberData.mahallId = `${family.mahallId}-${memberCount + 1}`;
     }
 
+    if (memberData.phone) {
+      const existingPhoneUser = await User.findOne({
+        phone: memberData.phone,
+        tenantId: finalTenantId,
+      });
+
+      if (existingPhoneUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'User with this phone number already exists for this tenant. Use a different member phone number.',
+        });
+      }
+    }
+
     const member = new Member({
       ...memberData,
       familyId: familyId || memberData.familyId,
@@ -142,8 +158,43 @@ export const createMember = async (req: AuthRequest, res: Response) => {
     });
 
     await member.save();
+
+    let memberUserCreated = false;
+    let memberUserMessage = 'Member user not created because phone number is missing.';
+
+    if (member.phone) {
+      const defaultMemberPassword = process.env.DEFAULT_MEMBER_PASSWORD || '123456';
+      const hashedPassword = await bcrypt.hash(defaultMemberPassword, 10);
+
+      const memberUser = new User({
+        name: member.name,
+        phone: member.phone,
+        role: 'member',
+        tenantId: finalTenantId,
+        memberId: member._id,
+        status: member.status === 'active' ? 'active' : 'inactive',
+        isSuperAdmin: false,
+        permissions: {
+          view: true,
+          add: false,
+          edit: false,
+          delete: false,
+        },
+        password: hashedPassword,
+      });
+
+      await memberUser.save();
+      memberUserCreated = true;
+      memberUserMessage = 'Linked member user account created successfully.';
+    }
+
     const memberResponse = await Member.findById(member._id).populate('familyId', 'houseName mahallId');
-    res.status(201).json({ success: true, data: memberResponse });
+    res.status(201).json({
+      success: true,
+      data: memberResponse,
+      memberUserCreated,
+      memberUserMessage,
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

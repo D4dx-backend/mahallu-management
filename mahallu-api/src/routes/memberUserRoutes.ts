@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getOwnProfile,
+  getOwnOverview,
   updateOwnProfile,
   getOwnPayments,
   getOwnWallet,
@@ -52,6 +53,7 @@ router.use(memberUserOnly);
  *         description: Member profile not found or not linked
  */
 router.get('/profile', getOwnProfile);
+router.get('/overview', getOwnOverview);
 
 /**
  * @swagger

@@ -95,3 +95,20 @@ export const memberUserOnly = (
   next();
 };
 
+export const allowRoles = (allowedRoles: Array<'super_admin' | 'mahall' | 'survey' | 'institute' | 'member'>) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (req.isSuperAdmin) {
+      return next();
+    }
+
+    if (!req.user?.role || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied for your role',
+      });
+    }
+
+    next();
+  };
+};
+
