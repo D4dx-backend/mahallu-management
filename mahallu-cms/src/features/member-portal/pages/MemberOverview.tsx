@@ -94,14 +94,7 @@ export default function MemberOverview() {
         </Card>
 
         <Card>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Assigned Options</h2>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <p className="text-gray-900 dark:text-gray-100">View: {overview.assignedOptions.view ? 'Yes' : 'No'}</p>
-            <p className="text-gray-900 dark:text-gray-100">Add: {overview.assignedOptions.add ? 'Yes' : 'No'}</p>
-            <p className="text-gray-900 dark:text-gray-100">Edit: {overview.assignedOptions.edit ? 'Yes' : 'No'}</p>
-            <p className="text-gray-900 dark:text-gray-100">Delete: {overview.assignedOptions.delete ? 'Yes' : 'No'}</p>
-          </div>
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800 space-y-2 text-sm">
+          <div className="space-y-2 text-sm">
             <p><span className="text-gray-500 dark:text-gray-400">Latest Varisangya Receipt:</span> <span className="text-gray-900 dark:text-gray-100">{overview.varusankhyaDetails.latestVarisangyaReceiptNo || '-'}</span></p>
             <p><span className="text-gray-500 dark:text-gray-400">Latest Zakat Receipt:</span> <span className="text-gray-900 dark:text-gray-100">{overview.varusankhyaDetails.latestZakatReceiptNo || '-'}</span></p>
           </div>

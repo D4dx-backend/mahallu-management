@@ -119,16 +119,18 @@ export default function Header() {
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200/50 bg-white/80 backdrop-blur-md px-6 dark:border-gray-800/50 dark:bg-gray-900/80">
         <div className="flex items-center gap-4">
           {/* Search / Command Palette Trigger */}
-          <button
-            onClick={() => setShowCommandPalette(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 bg-gray-100/80 rounded-lg hover:bg-gray-200/80 dark:bg-gray-800/80 dark:hover:bg-gray-700/80 dark:text-gray-400 transition-colors"
-          >
-            <FiSearch className="h-4 w-4" />
-            <span className="hidden md:inline">Search menu...</span>
-            <kbd className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded">
-              ⌘K
-            </kbd>
-          </button>
+          {user?.role !== 'member' && (
+            <button
+              onClick={() => setShowCommandPalette(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 bg-gray-100/80 rounded-lg hover:bg-gray-200/80 dark:bg-gray-800/80 dark:hover:bg-gray-700/80 dark:text-gray-400 transition-colors"
+            >
+              <FiSearch className="h-4 w-4" />
+              <span className="hidden md:inline">Search menu...</span>
+              <kbd className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded">
+                ⌘K
+              </kbd>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
