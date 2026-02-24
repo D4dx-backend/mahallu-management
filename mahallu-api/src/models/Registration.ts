@@ -10,6 +10,7 @@ export interface INikahRegistration extends Document {
   brideId?: mongoose.Types.ObjectId; // Member ID
   mahallMemberType?: 'groom' | 'bride';
   nikahDate: Date;
+  venue?: string;
   mahallId?: string;
   waliName?: string;
   witness1?: string;
@@ -51,6 +52,7 @@ export interface INOC extends Document {
   type: 'common' | 'nikah';
   nikahRegistrationId?: mongoose.Types.ObjectId; // For nikah NOC
   status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
   issuedDate?: Date;
   expiryDate?: Date;
   remarks?: string;
@@ -77,6 +79,7 @@ const NikahRegistrationSchema = new Schema<INikahRegistration>(
       enum: ['groom', 'bride'],
     },
     nikahDate: { type: Date, required: true },
+    venue: { type: String, trim: true },
     mahallId: String,
     waliName: String,
     witness1: String,
@@ -149,6 +152,7 @@ const NOCSchema = new Schema<INOC>(
     issuedDate: Date,
     expiryDate: Date,
     remarks: String,
+    approvedBy: { type: String, trim: true },
   },
   { timestamps: true }
 );

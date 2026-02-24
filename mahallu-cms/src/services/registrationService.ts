@@ -42,7 +42,8 @@ export interface DeathRegistration {
 
 export interface NOC {
   id: string;
-  tenantId?: string;
+  tenantId?: string | { _id: string; name: string };
+  mahalluName?: string;
   applicantName: string;
   applicantId?: string;
   applicantPhone?: string;
@@ -50,8 +51,21 @@ export interface NOC {
   purposeDescription?: string;
   purpose?: string;
   type: 'common' | 'nikah';
-  nikahRegistrationId?: string;
+  nikahRegistrationId?: string | {
+    _id?: string;
+    groomName?: string;
+    groomAge?: number;
+    brideName?: string;
+    brideAge?: number;
+    nikahDate?: string;
+    waliName?: string;
+    mahrAmount?: number;
+    mahrDescription?: string;
+    witness1?: string;
+    witness2?: string;
+  };
   status?: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
   issuedDate?: string;
   expiryDate?: string;
   remarks?: string;

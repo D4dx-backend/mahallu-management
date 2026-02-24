@@ -268,6 +268,7 @@ export const getAllNOCs = async (req: AuthRequest, res: Response) => {
       NOC.find(query)
         .populate('applicantId', 'name')
         .populate('nikahRegistrationId')
+        .populate('tenantId', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -320,6 +321,8 @@ export const createNOC = async (req: AuthRequest, res: Response) => {
       status: req.body.status || 'approved',
       // Set issued date to current date if not provided
       issuedDate: req.body.issuedDate || new Date(),
+      // Record who approved it
+      approvedBy: req.user?.name || undefined,
     };
 
     if (!nocData.tenantId && !req.isSuperAdmin) {
@@ -337,14 +340,20 @@ export const createNOC = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const updateNOC = async (req: Request, res: Response) => {
+export const updateNOC = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { status, issuedDate, expiryDate, remarks, purposeTitle, purposeDescription, purpose } = req.body;
-    
+
+    const updateData: Record<string, any> = { status, issuedDate, expiryDate, remarks, purposeTitle, purposeDescription, purpose };
+    if (status === 'approved') {
+      updateData.approvedBy = req.user?.name || undefined;
+      if (!issuedDate) updateData.issuedDate = new Date();
+    }
+
     const noc = await NOC.findByIdAndUpdate(
       id,
-      { status, issuedDate, expiryDate, remarks, purposeTitle, purposeDescription, purpose },
+      updateData,
       { new: true, runValidators: true }
     )
       .populate('applicantId', 'name')

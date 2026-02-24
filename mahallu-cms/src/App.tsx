@@ -107,6 +107,10 @@ import EditAsset from './features/assets/pages/EditAsset';
 import AssetDetail from './features/assets/pages/AssetDetail';
 import { ROUTES } from './constants/routes';
 import MemberOverview from './features/member-portal/pages/MemberOverview';
+import MemberPortalVarisangyaPage from './features/member-portal/pages/MemberVarisangyaPage';
+import MemberNOCRequest from './features/member-portal/pages/MemberNOCRequest';
+import MemberNOCList from './features/member-portal/pages/MemberNOCList';
+import MemberPayments from './features/member-portal/pages/MemberPayments';
 import { useAuthStore } from './store/authStore';
 
 function App() {
@@ -150,6 +154,46 @@ function App() {
             <ProtectedRoute allowedRoles={['member']}>
               <MainLayout>
                 <MemberOverview />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.MEMBER.VARISANGYA}
+          element={
+            <ProtectedRoute allowedRoles={['member']}>
+              <MainLayout>
+                <MemberPortalVarisangyaPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.MEMBER.NOC_REQUEST}
+          element={
+            <ProtectedRoute allowedRoles={['member']}>
+              <MainLayout>
+                <MemberNOCRequest />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.MEMBER.NOC_LIST}
+          element={
+            <ProtectedRoute allowedRoles={['member']}>
+              <MainLayout>
+                <MemberNOCList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.MEMBER.PAYMENTS}
+          element={
+            <ProtectedRoute allowedRoles={['member']}>
+              <MainLayout>
+                <MemberPayments />
               </MainLayout>
             </ProtectedRoute>
           }

@@ -4,6 +4,7 @@ import {
   getOwnOverview,
   updateOwnProfile,
   getOwnPayments,
+  getOwnVarisangya,
   getOwnWallet,
   getOwnWalletTransactions,
   requestVarisangyaPayment,
@@ -119,6 +120,7 @@ router.put('/profile', updateOwnProfile);
  *         description: Payment history retrieved successfully
  */
 router.get('/payments', getOwnPayments);
+router.get('/varisangya', getOwnVarisangya);
 
 /**
  * @swagger

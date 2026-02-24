@@ -302,6 +302,70 @@ export const getOwnPayments = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Get own varisangya list (member-level + family-level, with optional year filter)
+export const getOwnVarisangya = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.memberId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member profile not linked to user account',
+      });
+    }
+
+    const member = await Member.findById(req.user.memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found',
+      });
+    }
+
+    const { year } = req.query;
+    let dateFilter: any = {};
+    if (year) {
+      const y = Number(year);
+      dateFilter = {
+        paymentDate: {
+          $gte: new Date(`${y}-01-01T00:00:00.000Z`),
+          $lte: new Date(`${y}-12-31T23:59:59.999Z`),
+        },
+      };
+    }
+
+    const baseQuery = { tenantId: member.tenantId, ...dateFilter };
+
+    const [memberVarisangya, familyVarisangya] = await Promise.all([
+      Varisangya.find({ ...baseQuery, memberId: member._id })
+        .sort({ paymentDate: -1 })
+        .lean(),
+      member.familyId
+        ? Varisangya.find({ ...baseQuery, familyId: member.familyId })
+            .sort({ paymentDate: -1 })
+            .lean()
+        : Promise.resolve([]),
+    ]);
+
+    const memberTotal = memberVarisangya.reduce((sum: number, v: any) => sum + (v.amount || 0), 0);
+    const familyTotal = familyVarisangya.reduce((sum: number, v: any) => sum + (v.amount || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        memberVarisangya: memberVarisangya.map((v: any) => ({ ...v, status: 'paid' })),
+        familyVarisangya: familyVarisangya.map((v: any) => ({ ...v, status: 'paid' })),
+        summary: {
+          memberTotal,
+          memberCount: memberVarisangya.length,
+          familyTotal,
+          familyCount: familyVarisangya.length,
+        },
+      },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Get own wallet balance
 export const getOwnWallet = async (req: AuthRequest, res: Response) => {
   try {
@@ -521,11 +585,26 @@ export const getOwnRegistrations = async (req: AuthRequest, res: Response) => {
         applicantId: member._id,
       })
         .populate('nikahRegistrationId')
+        .populate('tenantId', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit) || 10);
 
-      registrations.noc = nocs;
+      // Backfill approvedBy for older approved NOCs that were saved before the field existed
+      const nocObjects = nocs.map(n => n.toObject()) as any[];
+      const needsApprover = nocObjects.some(n => n.status === 'approved' && !n.approvedBy);
+      if (needsApprover) {
+        const adminUser = await User.findOne({ tenantId: member.tenantId, role: 'mahall' }).select('name');
+        if (adminUser?.name) {
+          nocObjects.forEach(n => {
+            if (n.status === 'approved' && !n.approvedBy) {
+              n.approvedBy = adminUser.name;
+            }
+          });
+        }
+      }
+
+      registrations.noc = nocObjects;
     }
 
     res.json({ success: true, data: registrations });
@@ -631,21 +710,58 @@ export const requestNOC = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const nocData = {
-      ...req.body,
+    const { type, brideName, brideAge, nikahDate, venue, purposeTitle, purposeDescription, remarks } = req.body;
+
+    let nikahRegistrationId: any = undefined;
+
+    // For nikah NOC, create a linked NikahRegistration record first
+    if (type === 'nikah') {
+      if (!brideName || !nikahDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'brideName and nikahDate are required for nikah NOC',
+        });
+      }
+      const nikahReg = new NikahRegistration({
+        tenantId: member.tenantId,
+        groomId: member._id,
+        groomName: member.name,
+        groomAge: member.age,
+        brideName,
+        brideAge,
+        nikahDate,
+        venue,
+        mahallMemberType: 'groom',
+        status: 'pending',
+      });
+      await nikahReg.save();
+      nikahRegistrationId = nikahReg._id;
+    }
+
+    const nocData: any = {
       tenantId: member.tenantId,
       applicantId: member._id,
       applicantName: member.name,
       applicantPhone: member.phone || req.user.phone,
+      type: type || 'common',
+      purposeTitle,
+      purposeDescription,
+      remarks,
       status: 'pending',
     };
+
+    if (nikahRegistrationId) {
+      nocData.nikahRegistrationId = nikahRegistrationId;
+    }
 
     const noc = new NOC(nocData);
     await noc.save();
 
+    const populated = await NOC.findById(noc._id).populate('nikahRegistrationId');
+
     res.status(201).json({
       success: true,
-      data: noc,
+      data: populated,
       message: 'NOC request submitted successfully',
     });
   } catch (error: any) {

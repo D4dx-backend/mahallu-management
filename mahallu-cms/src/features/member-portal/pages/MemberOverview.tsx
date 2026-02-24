@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Card from '@/components/ui/Card';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { memberPortalService, MemberOverviewResponse } from '@/services/memberPortalService';
+import { ROUTES } from '@/constants/routes';
 
 const currency = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
 
@@ -90,6 +92,14 @@ export default function MemberOverview() {
             <p><span className="text-gray-500 dark:text-gray-400">Varisangya Count:</span> <span className="text-gray-900 dark:text-gray-100">{overview.family.financialSummary.varisangyaCount}</span></p>
             <p><span className="text-gray-500 dark:text-gray-400">Zakat Total:</span> <span className="text-gray-900 dark:text-gray-100">{currency.format(overview.family.financialSummary.zakatTotal || 0)}</span></p>
             <p><span className="text-gray-500 dark:text-gray-400">Zakat Count:</span> <span className="text-gray-900 dark:text-gray-100">{overview.family.financialSummary.zakatCount}</span></p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+            <Link
+              to={ROUTES.MEMBER.VARISANGYA}
+              className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
+            >
+              View All Varisangya →
+            </Link>
           </div>
         </Card>
 

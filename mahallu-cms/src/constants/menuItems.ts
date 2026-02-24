@@ -69,7 +69,35 @@ export const menuItems: MenuItem[] = [
     path: '/member/overview',
     allowedRoles: ['member'],
   },
-  
+  {
+    id: 'member-varisangya-portal',
+    label: 'My Varisangya',
+    icon: FiCreditCard,
+    path: '/member/varisangya',
+    allowedRoles: ['member'],
+  },
+  {
+    id: 'member-noc-request',
+    label: 'Request NOC',
+    icon: FiFilePlus,
+    path: '/member/noc/request',
+    allowedRoles: ['member'],
+  },
+  {
+    id: 'member-noc-list',
+    label: 'My NOCs',
+    icon: FiFile,
+    path: '/member/noc',
+    allowedRoles: ['member'],
+  },
+  {
+    id: 'member-payments',
+    label: 'My Payments',
+    icon: FiDollarSign,
+    path: '/member/payments',
+    allowedRoles: ['member'],
+  },
+
   // Core Data Management - Most Used
   {
     id: 'families',

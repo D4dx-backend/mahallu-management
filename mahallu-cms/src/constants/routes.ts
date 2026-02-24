@@ -8,6 +8,10 @@ export const ROUTES = {
   // Member Portal
   MEMBER: {
     OVERVIEW: '/member/overview',
+    VARISANGYA: '/member/varisangya',
+    NOC_REQUEST: '/member/noc/request',
+    NOC_LIST: '/member/noc',
+    PAYMENTS: '/member/payments',
   },
   
   // Users

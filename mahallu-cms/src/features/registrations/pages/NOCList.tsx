@@ -301,7 +301,20 @@ export default function NOCList() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              downloadNocPdf(row, `noc-${row.applicantName}`);
+              const nocId = (row as any)._id || row.id || '';
+              const mahalluName =
+                row.tenantId && typeof row.tenantId === 'object'
+                  ? (row.tenantId as any).name
+                  : undefined;
+              downloadNocPdf(
+                {
+                  ...row,
+                  id: nocId,
+                  mahalluName,
+                  approvedBy: row.approvedBy,
+                },
+                `noc-${row.applicantName}-${nocId.slice(-6)}`
+              );
             }}
             className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
             title="Download"
