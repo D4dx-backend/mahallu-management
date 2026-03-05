@@ -8,6 +8,7 @@ export interface Notification {
   recipientType?: 'individual' | 'all';
   recipientId?: string;
   isRead?: boolean;
+  imageUrl?: string;
   createdAt: string;
 }
 
@@ -34,6 +35,15 @@ export const notificationService = {
   markAllAsRead: async () => {
     const response = await api.put<{ success: boolean; message: string }>('/notifications/read-all');
     return response.data;
+  },
+
+  uploadImage: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await api.post<{ success: boolean; url: string }>('/upload/notification-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.url;
   },
 };
 

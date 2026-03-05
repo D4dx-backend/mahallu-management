@@ -140,6 +140,13 @@ export default function NotificationsList() {
                         )}
                       </div>
                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{notification.message}</p>
+                      {notification.imageUrl && (
+                        <img
+                          src={notification.imageUrl}
+                          alt="Notification"
+                          className="mt-2 h-24 w-auto max-w-xs rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                        />
+                      )}
                       <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                         {formatDate(notification.createdAt)}
                       </p>

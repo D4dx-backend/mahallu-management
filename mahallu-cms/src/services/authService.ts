@@ -44,5 +44,12 @@ export const authService = {
     });
     return response.data;
   },
+
+  registerDevice: async (oneSignalPlayerId: string) => {
+    const response = await api.put<{ success: boolean; message: string }>('/auth/register-device', {
+      oneSignalPlayerId,
+    });
+    return response.data;
+  },
 };
 

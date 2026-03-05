@@ -141,6 +141,7 @@ export const ROUTES = {
   NOTIFICATIONS: {
     INDIVIDUAL: '/notifications/individual',
     COLLECTION: '/notifications/collection',
+    SEND: '/notifications/send',
   },
   
   // Reports

@@ -41,7 +41,8 @@ import {
   FiStar,
   FiHelpCircle,
   FiUser,
-  FiPackage
+  FiPackage,
+  FiSend
 } from 'react-icons/fi';
 
 export interface MenuItem {
@@ -249,6 +250,7 @@ export const menuItems: MenuItem[] = [
     icon: FiBell,
     allowedRoles: ['super_admin', 'mahall'],
     children: [
+      { id: 'send-notification', label: 'Send Notification', icon: FiSend, path: '/notifications/send', allowedRoles: ['super_admin', 'mahall'] },
       { id: 'individual', label: 'Individual', icon: FiMessageSquare, path: '/notifications/individual', allowedRoles: ['super_admin', 'mahall'] },
       { id: 'collection', label: 'Collection', icon: FiMessageCircle, path: '/notifications/collection', allowedRoles: ['super_admin', 'mahall'] },
     ],

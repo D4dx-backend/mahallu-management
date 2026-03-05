@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import Notification from '../models/Notification';
+import User from '../models/User';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
+import { sendPushSilent } from '../services/oneSignalService';
 
 export const getAllNotifications = async (req: AuthRequest, res: Response) => {
   try {
@@ -53,6 +55,32 @@ export const createNotification = async (req: AuthRequest, res: Response) => {
 
     const notification = new Notification(notificationData);
     await notification.save();
+
+    // Fire-and-forget OneSignal push
+    (async () => {
+      try {
+        const userQuery: any = { oneSignalPlayerId: { $exists: true, $ne: null } };
+        if (notification.recipientId) {
+          userQuery._id = notification.recipientId;
+        } else if (notification.tenantId) {
+          userQuery.tenantId = notification.tenantId;
+        }
+        const users = await User.find(userQuery).select('oneSignalPlayerId');
+        const playerIds = users
+          .map((u: any) => u.oneSignalPlayerId)
+          .filter((id: any): id is string => Boolean(id));
+
+        sendPushSilent({
+          title: notification.title,
+          message: notification.message,
+          imageUrl: notification.imageUrl,
+          playerIds: playerIds.length > 0 ? playerIds : undefined,
+        });
+      } catch (err: any) {
+        console.error('[OneSignal] Player ID lookup failed:', err.message);
+      }
+    })();
+
     res.status(201).json({ success: true, data: notification });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

@@ -28,6 +28,7 @@ import tenantRoutes from './routes/tenantRoutes';
 import memberUserRoutes from './routes/memberUserRoutes';
 import assetRoutes from './routes/assetRoutes';
 import pettyCashRoutes from './routes/pettyCashRoutes';
+import uploadRoutes from './routes/uploadRoutes';
 import path from 'path';
 
 // Load environment variables from the correct path
@@ -127,6 +128,7 @@ app.use('/api/master-accounts', masterAccountRoutes);
 app.use('/api/member-user', memberUserRoutes);
 app.use('/api/assets', assetRoutes);
 app.use('/api/petty-cash', pettyCashRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
