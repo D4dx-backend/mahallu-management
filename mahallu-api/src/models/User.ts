@@ -19,6 +19,7 @@ export interface IUser extends Document {
   };
   password: string;
   isSuperAdmin: boolean;
+  oneSignalPlayerId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -86,6 +87,10 @@ const UserSchema = new Schema<IUser>(
     isSuperAdmin: {
       type: Boolean,
       default: false,
+    },
+    oneSignalPlayerId: {
+      type: String,
+      default: null,
     },
   },
   {

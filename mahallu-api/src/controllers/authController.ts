@@ -130,6 +130,19 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const registerDevice = async (req: AuthRequest, res: Response) => {
+  try {
+    const { oneSignalPlayerId } = req.body;
+    if (!oneSignalPlayerId) {
+      return res.status(400).json({ success: false, message: 'oneSignalPlayerId is required' });
+    }
+    await User.findByIdAndUpdate(req.user?._id, { oneSignalPlayerId });
+    res.json({ success: true, message: 'Device registered successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const changePassword = async (req: AuthRequest, res: Response) => {
   try {
     const { currentPassword, newPassword } = req.body;

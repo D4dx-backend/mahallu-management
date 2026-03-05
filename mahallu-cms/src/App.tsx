@@ -96,6 +96,7 @@ import SelectUserType from './features/users/pages/SelectUserType';
 import UnapprovedFamiliesList from './features/families/pages/UnapprovedFamiliesList';
 import InstituteDetail from './features/institutes/pages/InstituteDetail';
 import NotificationsList from './features/notifications/pages/NotificationsList';
+import SendNotification from './features/notifications/pages/SendNotification';
 import TenantsList from './features/admin/pages/TenantsList';
 import CreateTenant from './features/admin/pages/CreateTenant';
 import TenantDetails from './features/admin/pages/TenantDetails';
@@ -1315,6 +1316,16 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <NotificationsList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.NOTIFICATIONS.SEND}
+          element={
+            <ProtectedRoute allowedRoles={['super_admin', 'mahall']}>
+              <MainLayout>
+                <SendNotification />
               </MainLayout>
             </ProtectedRoute>
           }

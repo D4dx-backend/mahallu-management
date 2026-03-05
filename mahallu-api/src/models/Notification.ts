@@ -9,6 +9,7 @@ export interface INotification extends Document {
   type: 'info' | 'warning' | 'success' | 'error';
   isRead: boolean;
   link?: string;
+  imageUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,6 +37,7 @@ const NotificationSchema = new Schema<INotification>(
     },
     isRead: { type: Boolean, default: false },
     link: String,
+    imageUrl: { type: String },
   },
   {
     timestamps: true,

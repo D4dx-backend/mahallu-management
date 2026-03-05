@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { FiLock, FiPhone, FiRefreshCw } from 'react-icons/fi';
 import { authService } from '@/services/authService';
+import { initAndSubscribe } from '@/services/oneSignalService';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -88,6 +89,18 @@ export default function Login() {
       });
       setUser(response.user);
       setToken(response.token);
+
+      // Subscribe this browser to OneSignal push (fire-and-forget, non-blocking)
+      if (response.user.role !== 'member') {
+        initAndSubscribe()
+          .then((playerId) => {
+            if (playerId) {
+              authService.registerDevice(playerId).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+
       navigate(response.user.role === 'member' ? ROUTES.MEMBER.OVERVIEW : ROUTES.DASHBOARD);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
