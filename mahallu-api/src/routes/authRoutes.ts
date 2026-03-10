@@ -1,5 +1,5 @@
 import express from 'express';
-import { login, getCurrentUser, changePassword, sendOTP, verifyOTP, registerDevice } from '../controllers/authController';
+import { login, getCurrentUser, changePassword, sendOTP, verifyOTP, registerDevice, selectAccount } from '../controllers/authController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { verifyOtpRateLimiter } from '../middleware/rateLimit';
 import { validationHandler } from '../middleware/validationHandler';
@@ -228,6 +228,8 @@ router.get('/me', authMiddleware, getCurrentUser);
 router.post('/change-password', authMiddleware, changePasswordValidation, validationHandler, changePassword);
 
 router.put('/register-device', authMiddleware, registerDevice);
+
+router.post('/select-account', selectAccount);
 
 export default router;
 

@@ -98,8 +98,8 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
-// Compound index for phone + tenantId (super admin can have same phone)
-UserSchema.index({ phone: 1, tenantId: 1 }, { unique: true, sparse: true });
+// Compound index for phone + tenantId + role (same person can have multiple roles in the same mahallu)
+UserSchema.index({ phone: 1, tenantId: 1, role: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model<IUser>('User', UserSchema);
 

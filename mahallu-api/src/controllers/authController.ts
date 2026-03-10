@@ -6,6 +6,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { normalizeIndianPhone, sendWhatsAppMessage } from '../services/dxingService';
+import Tenant from '../models/Tenant';
+import Institute from '../models/Institute';
 
 const getPhoneVariants = (input: string): string[] => {
   const variants = new Set<string>();
@@ -197,34 +199,23 @@ export const sendOTP = async (req: Request, res: Response) => {
       new Set([...getPhoneVariants(phone), localPhone, normalizedPhone, `+${normalizedPhone}`])
     );
 
-    // Check if user exists
-    let user = await User.findOne({ phone: { $in: phoneVariants } });
-    
+    // Check if any user account exists with this phone
+    let users = await User.find({ phone: { $in: phoneVariants } });
+    let user: (typeof users)[0] | null = users.find(u => u.status === 'active') || users[0] || null;
+
     // If no user found, check if it's a member trying to login
     if (!user) {
       const member = await Member.findOne({ phone: { $in: phoneVariants } });
       if (member) {
         // Check if member user account exists
-        user = await User.findOne({ memberId: member._id, role: 'member' });
-        
-        if (!user) {
-          const existingPhoneUser = await User.findOne({
-            phone: { $in: phoneVariants },
-            tenantId: member.tenantId,
-          });
+        let memberUser = await User.findOne({ memberId: member._id, role: 'member' });
 
-          if (existingPhoneUser) {
-            return res.status(409).json({
-              success: false,
-              message: 'Phone number is already linked to another account in this tenant.',
-            });
-          }
-
+        if (!memberUser) {
           const defaultMemberPassword = process.env.DEFAULT_MEMBER_PASSWORD || '123456';
           const hashedPassword = await bcrypt.hash(defaultMemberPassword, 10);
 
           try {
-            user = await User.create({
+            memberUser = await User.create({
               name: member.name,
               phone: localPhone,
               role: 'member',
@@ -242,14 +233,16 @@ export const sendOTP = async (req: Request, res: Response) => {
             });
           } catch (createError: any) {
             if (createError?.code === 11000) {
-              user = await User.findOne({ memberId: member._id, role: 'member' });
+              memberUser = await User.findOne({ memberId: member._id, role: 'member' });
             }
 
-            if (!user) {
+            if (!memberUser) {
               throw createError;
             }
           }
         }
+        user = memberUser;
+        users = [memberUser!];
       } else {
         return res.status(404).json({
           success: false,
@@ -258,7 +251,7 @@ export const sendOTP = async (req: Request, res: Response) => {
       }
     }
 
-    if (user.status !== 'active') {
+    if (!users.some(u => u.status === 'active')) {
       return res.status(403).json({
         success: false,
         message: 'Account is inactive',
@@ -449,22 +442,21 @@ export const verifyOTP = async (req: Request, res: Response) => {
       new Set([...getPhoneVariants(phone), localPhone, normalizedPhone, `+${normalizedPhone}`])
     );
 
-    // Find user
-    let user = await User.findOne({ phone: { $in: phoneVariants } });
-    
-    // If no user found, check if it's a member trying to login
-    if (!user) {
+    // Find all users with this phone (multiple roles possible in same mahallu)
+    let users = await User.find({ phone: { $in: phoneVariants } });
+
+    // If no users found, check if it's a member trying to login
+    if (users.length === 0) {
       const member = await Member.findOne({ phone: { $in: phoneVariants } });
       if (member) {
-        // Find member user account
-        user = await User.findOne({ memberId: member._id, role: 'member' });
-        
-        if (!user) {
+        const memberUser = await User.findOne({ memberId: member._id, role: 'member' });
+        if (!memberUser) {
           return res.status(404).json({
             success: false,
             message: 'Member account not found. Please contact admin to create your account.',
           });
         }
+        users = [memberUser];
       } else {
         return res.status(404).json({
           success: false,
@@ -473,7 +465,8 @@ export const verifyOTP = async (req: Request, res: Response) => {
       }
     }
 
-    if (user.status !== 'active') {
+    const activeUsers = users.filter(u => u.status === 'active');
+    if (activeUsers.length === 0) {
       return res.status(403).json({
         success: false,
         message: 'Account is inactive',
@@ -483,6 +476,53 @@ export const verifyOTP = async (req: Request, res: Response) => {
     // Mark OTP as used
     otpRecord.isUsed = true;
     await otpRecord.save();
+
+    // Multiple active accounts — prompt the user to choose which role to log in as
+    if (activeUsers.length > 1) {
+      if (!process.env.JWT_SECRET) {
+        return res.status(500).json({ success: false, message: 'Missing JWT secret' });
+      }
+
+      const tenantMap = new Map<string, string>();
+      const instituteMap = new Map<string, string>();
+
+      for (const u of activeUsers) {
+        if (u.tenantId && !tenantMap.has(u.tenantId.toString())) {
+          const tenant = await Tenant.findById(u.tenantId).select('name');
+          if (tenant) tenantMap.set(u.tenantId.toString(), (tenant as any).name);
+        }
+        if (u.instituteId && !instituteMap.has(u.instituteId.toString())) {
+          const institute = await Institute.findById(u.instituteId).select('name');
+          if (institute) instituteMap.set(u.instituteId.toString(), (institute as any).name);
+        }
+      }
+
+      const accounts = activeUsers.map((u) => ({
+        userId: (u._id as any).toString(),
+        role: u.role,
+        name: u.name,
+        tenantId: u.tenantId ? (u.tenantId as any).toString() : null,
+        tenantName: u.tenantId ? (tenantMap.get(u.tenantId.toString()) || null) : null,
+        ...(u.instituteId && {
+          instituteId: (u.instituteId as any).toString(),
+          instituteName: instituteMap.get(u.instituteId.toString()) || null,
+        }),
+      }));
+
+      const preAuthToken = jwt.sign(
+        { phone: normalizedPhone, purpose: 'role_selection' },
+        process.env.JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+
+      return res.json({
+        success: true,
+        data: { requiresRoleSelection: true, preAuthToken, accounts },
+      });
+    }
+
+    // Single active user — proceed with normal login
+    const user = activeUsers[0];
 
     // Update last login
     user.lastLogin = new Date();
@@ -508,6 +548,66 @@ export const verifyOTP = async (req: Request, res: Response) => {
         user: userResponse,
         token,
       },
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const selectAccount = async (req: Request, res: Response) => {
+  try {
+    const { preAuthToken, userId } = req.body;
+
+    if (!preAuthToken || !userId) {
+      return res.status(400).json({ success: false, message: 'preAuthToken and userId are required' });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ success: false, message: 'Missing JWT secret' });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(preAuthToken, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({ success: false, message: 'Invalid or expired selection token. Please log in again.' });
+    }
+
+    if (decoded.purpose !== 'role_selection') {
+      return res.status(401).json({ success: false, message: 'Invalid token purpose' });
+    }
+
+    const tokenPhone: string = decoded.phone;
+    const phoneVariants = Array.from(
+      new Set([...getPhoneVariants(tokenPhone), tokenPhone])
+    );
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User account not found' });
+    }
+
+    // Verify user's phone matches the token's phone (prevents cross-account hijacking)
+    if (!phoneVariants.includes(user.phone)) {
+      return res.status(401).json({ success: false, message: 'Account mismatch. Please log in again.' });
+    }
+
+    if (user.status !== 'active') {
+      return res.status(403).json({ success: false, message: 'Account is inactive' });
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = jwt.sign(
+      { userId: user._id, isSuperAdmin: user.isSuperAdmin },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      data: { user, token },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
