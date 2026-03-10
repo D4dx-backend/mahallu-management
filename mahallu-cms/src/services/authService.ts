@@ -16,6 +16,22 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface AccountOption {
+  userId: string;
+  role: string;
+  name: string;
+  tenantId: string | null;
+  tenantName: string | null;
+  instituteId?: string;
+  instituteName?: string | null;
+}
+
+export interface RoleSelectionResponse {
+  requiresRoleSelection: true;
+  preAuthToken: string;
+  accounts: AccountOption[];
+}
+
 export const authService = {
   login: async (credentials: LoginCredentials) => {
     const response = await api.post<{ success: boolean; data: AuthResponse }>('/auth/login', credentials);
@@ -27,8 +43,13 @@ export const authService = {
     return response.data;
   },
 
-  verifyOTP: async (credentials: OTPCredentials) => {
-    const response = await api.post<{ success: boolean; data: AuthResponse }>('/auth/verify-otp', credentials);
+  verifyOTP: async (credentials: OTPCredentials): Promise<AuthResponse | RoleSelectionResponse> => {
+    const response = await api.post<{ success: boolean; data: AuthResponse | RoleSelectionResponse }>('/auth/verify-otp', credentials);
+    return response.data.data;
+  },
+
+  selectAccount: async (preAuthToken: string, userId: string): Promise<AuthResponse> => {
+    const response = await api.post<{ success: boolean; data: AuthResponse }>('/auth/select-account', { preAuthToken, userId });
     return response.data.data;
   },
 

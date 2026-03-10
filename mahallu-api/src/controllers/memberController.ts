@@ -137,15 +137,16 @@ export const createMember = async (req: AuthRequest, res: Response) => {
     }
 
     if (memberData.phone) {
-      const existingPhoneUser = await User.findOne({
+      const existingMemberUser = await User.findOne({
         phone: memberData.phone,
         tenantId: finalTenantId,
+        role: 'member',
       });
 
-      if (existingPhoneUser) {
+      if (existingMemberUser) {
         return res.status(400).json({
           success: false,
-          message: 'User with this phone number already exists for this tenant. Use a different member phone number.',
+          message: 'A member with this phone number already exists for this tenant. Use a different phone number.',
         });
       }
     }

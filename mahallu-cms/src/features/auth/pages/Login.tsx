@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { FiLock, FiPhone, FiRefreshCw } from 'react-icons/fi';
-import { authService } from '@/services/authService';
+import { FiLock, FiPhone, FiRefreshCw, FiUser, FiHome, FiBookOpen, FiClipboard, FiChevronRight } from 'react-icons/fi';
+import { authService, AccountOption } from '@/services/authService';
 import { initAndSubscribe } from '@/services/oneSignalService';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
@@ -27,7 +27,7 @@ type OTPFormData = z.infer<typeof otpSchema>;
 export default function Login() {
   const navigate = useNavigate();
   const { setUser, setToken } = useAuthStore();
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [step, setStep] = useState<'phone' | 'otp' | 'select'>('phone');
   const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingOTP, setIsSendingOTP] = useState(false);
@@ -35,6 +35,8 @@ export default function Login() {
   const [otpSent, setOtpSent] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [devOTP, setDevOTP] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [preAuthToken, setPreAuthToken] = useState('');
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
@@ -87,6 +89,14 @@ export default function Login() {
         phone,
         otp: data.otp,
       });
+
+      if ('requiresRoleSelection' in response && response.requiresRoleSelection) {
+        setAccounts(response.accounts);
+        setPreAuthToken(response.preAuthToken);
+        setStep('select');
+        return;
+      }
+
       setUser(response.user);
       setToken(response.token);
 
@@ -114,7 +124,56 @@ export default function Login() {
     setOtpSent(false);
     setError('');
     setDevOTP(null);
+    setAccounts([]);
+    setPreAuthToken('');
     otpForm.reset();
+  };
+
+  const handleSelectAccount = async (userId: string) => {
+    try {
+      setIsLoading(true);
+      setError('');
+      const response = await authService.selectAccount(preAuthToken, userId);
+      setUser(response.user);
+      setToken(response.token);
+
+      if (response.user.role !== 'member') {
+        initAndSubscribe()
+          .then((playerId) => {
+            if (playerId) {
+              authService.registerDevice(playerId).catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+
+      navigate(response.user.role === 'member' ? ROUTES.MEMBER.OVERVIEW : ROUTES.DASHBOARD);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to select account. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getRoleLabel = (role: string, instituteName?: string | null) => {
+    switch (role) {
+      case 'member': return 'Community Member';
+      case 'mahall': return 'Mahallu Admin';
+      case 'survey': return 'Survey Admin';
+      case 'institute': return instituteName ? `Institute Admin — ${instituteName}` : 'Institute Admin';
+      case 'super_admin': return 'Super Admin';
+      default: return role;
+    }
+  };
+
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'member': return <FiUser className="h-5 w-5 text-primary-600 dark:text-primary-400" />;
+      case 'mahall': return <FiHome className="h-5 w-5 text-primary-600 dark:text-primary-400" />;
+      case 'survey': return <FiClipboard className="h-5 w-5 text-primary-600 dark:text-primary-400" />;
+      case 'institute': return <FiBookOpen className="h-5 w-5 text-primary-600 dark:text-primary-400" />;
+      default: return <FiUser className="h-5 w-5 text-primary-600 dark:text-primary-400" />;
+    }
   };
 
   return (
@@ -167,6 +226,50 @@ export default function Login() {
               Send OTP
             </Button>
           </form>
+        ) : step === 'select' ? (
+          <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="mb-4 p-4 bg-blue-50/50 backdrop-blur-sm border border-blue-200 rounded-xl text-blue-700 text-sm dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200">
+              <p className="font-semibold text-base">Multiple Accounts Found</p>
+              <p className="text-blue-600/80 dark:text-blue-300/80 mt-1">
+                Select the account you want to sign in with.
+              </p>
+            </div>
+
+            {accounts.map((account) => (
+              <button
+                key={account.userId}
+                type="button"
+                onClick={() => handleSelectAccount(account.userId)}
+                disabled={isLoading}
+                className="w-full text-left p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-primary-400 hover:bg-primary-50/50 dark:hover:border-primary-600 dark:hover:bg-primary-900/20 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="p-2.5 bg-primary-100 dark:bg-primary-900/40 rounded-lg group-hover:bg-primary-200 dark:group-hover:bg-primary-900/60 transition-colors flex-shrink-0">
+                    {getRoleIcon(account.role)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      {getRoleLabel(account.role, account.instituteName)}
+                    </p>
+                    {account.tenantName && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                        {account.tenantName}
+                      </p>
+                    )}
+                  </div>
+                  <FiChevronRight className="h-5 w-5 text-gray-400 group-hover:text-primary-500 flex-shrink-0 transition-colors" />
+                </div>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={handleBackToPhone}
+              className="w-full text-center text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors font-medium pt-2"
+            >
+              ← Back to login
+            </button>
+          </div>
         ) : (
           <form onSubmit={otpForm.handleSubmit(handleVerifyOTP)} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="mb-4 p-4 bg-blue-50/50 backdrop-blur-sm border border-blue-200 rounded-xl text-blue-700 text-sm dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200">
