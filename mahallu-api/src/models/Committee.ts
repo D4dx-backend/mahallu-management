@@ -3,7 +3,9 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ICommittee extends Document {
   tenantId: mongoose.Types.ObjectId;
   name: string;
+  nameMl?: string;
   description?: string;
+  descriptionMl?: string;
   members: mongoose.Types.ObjectId[];
   status: 'active' | 'inactive';
   createdAt: Date;
@@ -23,7 +25,15 @@ const CommitteeSchema = new Schema<ICommittee>(
       required: [true, 'Committee name is required'],
       trim: true,
     },
+    nameMl: {
+      type: String,
+      trim: true,
+    },
     description: {
+      type: String,
+      trim: true,
+    },
+    descriptionMl: {
       type: String,
       trim: true,
     },

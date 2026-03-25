@@ -20,6 +20,7 @@ import { getTenantId as extractTenantId } from '@/utils/tenantHelper';
 
 const memberSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   familyId: z.string().min(1, 'Family is required'),
   familyName: z.string().min(1, 'Family Name is required'),
   age: z.number().min(0).max(150).optional().or(z.literal('')),
@@ -226,7 +227,12 @@ export default function CreateMember() {
                 error={errors.name?.message}
                 required
                 placeholder="Full Name"
-                className="md:col-span-2"
+              />
+              <Input
+                label="Member Name (Malayalam)"
+                {...register('nameMl')}
+                placeholder="പേര്"
+                className="font-malayalam"
               />
               <Input
                 label="Age"

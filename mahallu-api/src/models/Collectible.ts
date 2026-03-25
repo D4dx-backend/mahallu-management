@@ -9,6 +9,7 @@ export interface IVarisangya extends Document {
   paymentMethod?: string;
   receiptNo?: string;
   remarks?: string;
+  remarksMl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +24,7 @@ export interface IZakat extends Document {
   receiptNo?: string;
   category?: string;
   remarks?: string;
+  remarksMl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,6 +65,7 @@ const VarisangyaSchema = new Schema<IVarisangya>(
     paymentMethod: String,
     receiptNo: String,
     remarks: String,
+    remarksMl: String,
   },
   { timestamps: true }
 );
@@ -83,6 +86,7 @@ const ZakatSchema = new Schema<IZakat>(
     receiptNo: String,
     category: String,
     remarks: String,
+    remarksMl: String,
   },
   { timestamps: true }
 );

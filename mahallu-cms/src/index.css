@@ -91,3 +91,8 @@
 .dark ::-webkit-scrollbar-thumb:hover {
   background-color: #6b7280;
 }
+
+/* Malayalam font utility */
+.font-malayalam {
+  font-family: 'Noto Sans Malayalam', sans-serif;
+}

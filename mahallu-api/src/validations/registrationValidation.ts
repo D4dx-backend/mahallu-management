@@ -8,6 +8,7 @@ export const createNikahRegistrationValidation = [
     .withMessage('Groom name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Groom name must be between 2 and 100 characters'),
+  body('groomNameMl').optional().trim(),
   body('groomAge')
     .optional()
     .isInt({ min: 0, max: 150 })
@@ -22,6 +23,7 @@ export const createNikahRegistrationValidation = [
     .withMessage('Bride name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Bride name must be between 2 and 100 characters'),
+  body('brideNameMl').optional().trim(),
   body('brideAge')
     .optional()
     .isInt({ min: 0, max: 150 })
@@ -66,6 +68,7 @@ export const updateNikahRegistrationValidation = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('Groom name must be between 2 and 100 characters'),
+  body('groomNameMl').optional().trim(),
   body('groomAge')
     .optional()
     .isInt({ min: 0, max: 150 })
@@ -79,6 +82,7 @@ export const updateNikahRegistrationValidation = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('Bride name must be between 2 and 100 characters'),
+  body('brideNameMl').optional().trim(),
   body('brideAge')
     .optional()
     .isInt({ min: 0, max: 150 })
@@ -119,6 +123,7 @@ export const createDeathRegistrationValidation = [
     .withMessage('Deceased name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Deceased name must be between 2 and 100 characters'),
+  body('deceasedNameMl').optional().trim(),
   body('deceasedId')
     .optional({ values: 'falsy' })
     .isMongoId()
@@ -197,6 +202,7 @@ export const createNOCValidation = [
     .withMessage('Applicant name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Applicant name must be between 2 and 100 characters'),
+  body('applicantNameMl').optional().trim(),
   body('applicantId')
     .optional()
     .isMongoId()
@@ -211,6 +217,7 @@ export const createNOCValidation = [
     .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Purpose title must be between 2 and 200 characters'),
+  body('purposeTitleMl').optional().trim(),
   body('purposeDescription')
     .optional()
     .isLength({ min: 2 })
@@ -261,6 +268,7 @@ export const updateNOCValidation = [
     .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Purpose title must be between 2 and 200 characters'),
+  body('purposeTitleMl').optional().trim(),
   body('purposeDescription')
     .optional()
     .isLength({ min: 2 })

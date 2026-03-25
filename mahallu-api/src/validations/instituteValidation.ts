@@ -7,12 +7,14 @@ export const createInstituteValidation = [
     .withMessage('Institute name is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Institute name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('place')
     .trim()
     .notEmpty()
     .withMessage('Place is required')
     .isLength({ min: 1, max: 200 })
     .withMessage('Place must be between 1 and 200 characters'),
+  body('placeMl').optional().trim(),
   body('type')
     .isIn(['institute', 'madrasa', 'orphanage', 'hospital', 'other'])
     .withMessage('Invalid institute type'),
@@ -45,11 +47,13 @@ export const updateInstituteValidation = [
     .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Institute name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('place')
     .optional()
     .trim()
     .isLength({ min: 1, max: 200 })
     .withMessage('Place must be between 1 and 200 characters'),
+  body('placeMl').optional().trim(),
   body('type')
     .optional()
     .isIn(['institute', 'madrasa', 'orphanage', 'hospital', 'other'])

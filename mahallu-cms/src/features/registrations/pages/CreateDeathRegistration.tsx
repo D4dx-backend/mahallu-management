@@ -16,6 +16,7 @@ import { Member } from '@/types';
 
 const deathSchema = z.object({
   deceasedName: z.string().min(1, 'Deceased name is required'),
+  deceasedNameMl: z.string().optional(),
   deceasedId: z.string().optional(),
   deathDate: z.string().min(1, 'Death date is required'),
   placeOfDeath: z.string().optional(),
@@ -85,6 +86,7 @@ export default function CreateDeathRegistration() {
       setError(null);
       await registrationService.createDeath({
         deceasedName: data.deceasedName,
+        deceasedNameMl: data.deceasedNameMl || undefined,
         deceasedId: data.deceasedId || undefined,
         deathDate: data.deathDate,
         placeOfDeath: data.placeOfDeath || undefined,
@@ -156,6 +158,12 @@ export default function CreateDeathRegistration() {
               required
               placeholder="Deceased Name"
               className="md:col-span-2"
+            />
+            <Input
+              label="Deceased Name (Malayalam)"
+              {...register('deceasedNameMl')}
+              placeholder="മരിച്ചവരുടെ പേര്"
+              className="md:col-span-2 font-malayalam"
             />
             <Input
               label="Death Date"

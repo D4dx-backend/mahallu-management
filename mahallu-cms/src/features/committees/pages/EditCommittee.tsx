@@ -17,7 +17,9 @@ import { Member } from '@/types';
 
 const committeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   description: z.string().optional(),
+  descriptionMl: z.string().optional(),
   members: z.array(z.string()).optional(),
   status: z.enum(['active', 'inactive']).optional(),
 });
@@ -63,6 +65,8 @@ export default function EditCommittee() {
       const data = await committeeService.getById(id);
       setValue('name', data.name);
       setValue('description', data.description || '');
+      setValue('nameMl', data.nameMl || '');
+      setValue('descriptionMl', data.descriptionMl || '');
       setValue('status', data.status || 'active');
       if (Array.isArray(data.members)) {
         const memberIds = data.members.map((m: any) => (typeof m === 'string' ? m : m.id));
@@ -110,7 +114,9 @@ export default function EditCommittee() {
       setError(null);
       await committeeService.update(id, {
         name: data.name,
+        nameMl: data.nameMl,
         description: data.description,
+        descriptionMl: data.descriptionMl,
         members: data.members || [],
         status: data.status || 'active',
       });
@@ -163,10 +169,22 @@ export default function EditCommittee() {
               className="md:col-span-2"
             />
             <Input
+              label="Name (Malayalam)"
+              {...register('nameMl')}
+              placeholder="കമ്മിറ്റിയുടെ പേര്"
+              className="md:col-span-2 font-malayalam"
+            />
+            <Input
               label="Description"
               {...register('description')}
               placeholder="Description"
               className="md:col-span-2"
+            />
+            <Input
+              label="Description (Malayalam)"
+              {...register('descriptionMl')}
+              placeholder="വിവരണം"
+              className="md:col-span-2 font-malayalam"
             />
             <Select
               label="Status"

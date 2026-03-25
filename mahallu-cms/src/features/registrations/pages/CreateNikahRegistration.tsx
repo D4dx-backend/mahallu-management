@@ -17,8 +17,10 @@ import { Member } from '@/types';
 
 const nikahSchema = z.object({
   groomName: z.string().min(1, 'Groom name is required'),
+  groomNameMl: z.string().optional(),
   groomAge: z.number().min(0).max(150).optional().or(z.literal('')),
   brideName: z.string().min(1, 'Bride name is required'),
+  brideNameMl: z.string().optional(),
   brideAge: z.number().min(0).max(150).optional().or(z.literal('')),
   mahallMemberType: z.enum(['groom', 'bride']).optional().or(z.literal('')),
   mahallMemberId: z.string().optional(),
@@ -123,8 +125,10 @@ export default function CreateNikahRegistration() {
       setError(null);
       await registrationService.createNikah({
         groomName: data.groomName,
+        groomNameMl: data.groomNameMl || undefined,
         groomAge: data.groomAge || undefined,
         brideName: data.brideName,
+        brideNameMl: data.brideNameMl || undefined,
         brideAge: data.brideAge || undefined,
         groomId: data.mahallMemberType === 'groom' ? data.mahallMemberId : undefined,
         brideId: data.mahallMemberType === 'bride' ? data.mahallMemberId : undefined,
@@ -205,6 +209,12 @@ export default function CreateNikahRegistration() {
               placeholder="Groom Name"
             />
             <Input
+              label="Groom Name (Malayalam)"
+              {...register('groomNameMl')}
+              placeholder="വരന്റെ പേര്"
+              className="font-malayalam"
+            />
+            <Input
               label="Groom Age"
               type="number"
               {...register('groomAge', { valueAsNumber: true })}
@@ -218,6 +228,12 @@ export default function CreateNikahRegistration() {
               error={errors.brideName?.message}
               required
               placeholder="Bride Name"
+            />
+            <Input
+              label="Bride Name (Malayalam)"
+              {...register('brideNameMl')}
+              placeholder="വധുവിന്റെ പേര്"
+              className="font-malayalam"
             />
             <Input
               label="Bride Age"

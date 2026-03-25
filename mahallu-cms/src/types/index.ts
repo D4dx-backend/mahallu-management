@@ -3,6 +3,7 @@
 export interface User {
   id: string;
   name: string;
+  nameMl?: string;
   phone: string;
   email?: string;
   role: 'super_admin' | 'mahall' | 'survey' | 'institute' | 'member';
@@ -28,12 +29,16 @@ export interface Family {
   tenantId?: string;
   mahallId?: string;
   houseName: string;
+  houseNameMl?: string;
   familyHead?: string;
+  familyHeadMl?: string;
   contactNo?: string;
   wardNumber?: string;
   houseNo?: string;
   area?: string;
+  areaMl?: string;
   place?: string;
+  placeMl?: string;
   via?: string;
   state: string;
   district: string;
@@ -52,6 +57,7 @@ export interface Member {
   tenantId?: string;
   mahallId?: string;
   name: string;
+  nameMl?: string;
   familyId: string;
   familyName: string;
   age?: number;

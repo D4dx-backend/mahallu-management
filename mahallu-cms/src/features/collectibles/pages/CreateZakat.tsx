@@ -22,6 +22,7 @@ const zakatSchema = z.object({
   paymentMethod: z.string().optional(),
   category: z.string().optional(),
   remarks: z.string().optional(),
+  remarksMl: z.string().optional(),
 });
 
 type ZakatFormData = z.infer<typeof zakatSchema>;
@@ -81,6 +82,7 @@ export default function CreateZakat() {
         paymentMethod: data.paymentMethod,
         category: data.category,
         remarks: data.remarks,
+        remarksMl: data.remarksMl,
       };
 
       const memberMap = new Map(members.map((member) => [member.id, member]));
@@ -121,6 +123,7 @@ export default function CreateZakat() {
         paymentMethod: '',
         category: '',
         remarks: '',
+        remarksMl: '',
       });
     } catch (err: any) {
       setSubmitError(err.response?.data?.message || 'Failed to create zakat payment. Please try again.');
@@ -210,6 +213,12 @@ export default function CreateZakat() {
               {...register('remarks')}
               placeholder="Remarks"
               className="md:col-span-2"
+            />
+            <Input
+              label="Remarks (Malayalam)"
+              {...register('remarksMl')}
+              placeholder="കുറിപ്പ്"
+              className="md:col-span-2 font-malayalam"
             />
           </div>
 

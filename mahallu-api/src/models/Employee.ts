@@ -4,9 +4,11 @@ export interface IEmployee extends Document {
   tenantId: mongoose.Types.ObjectId;
   instituteId: mongoose.Types.ObjectId;
   name: string;
+  nameMl?: string;
   phone?: string;
   email?: string;
   designation: string;
+  designationMl?: string;
   department?: string;
   joinDate: Date;
   salary: number;
@@ -41,6 +43,10 @@ const EmployeeSchema = new Schema<IEmployee>(
       required: [true, 'Employee name is required'],
       trim: true,
     },
+    nameMl: {
+      type: String,
+      trim: true,
+    },
     phone: {
       type: String,
       trim: true,
@@ -53,6 +59,10 @@ const EmployeeSchema = new Schema<IEmployee>(
     designation: {
       type: String,
       required: [true, 'Designation is required'],
+      trim: true,
+    },
+    designationMl: {
+      type: String,
       trim: true,
     },
     department: {

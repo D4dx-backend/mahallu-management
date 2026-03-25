@@ -14,6 +14,7 @@ import { masterAccountService } from '@/services/masterAccountService';
 
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   type: z.enum(['income', 'expense'], { required_error: 'Type is required' }),
   description: z.string().optional(),
 });
@@ -39,6 +40,7 @@ export default function CreateCategory() {
       setError(null);
       await masterAccountService.createCategory({
         name: data.name,
+        nameMl: data.nameMl,
         type: data.type,
         description: data.description,
       });
@@ -75,6 +77,9 @@ export default function CreateCategory() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <Input label="Category Name" {...register('name')} error={errors.name?.message} placeholder="e.g., Donations, Salaries" />
+            </div>
+            <div className="md:col-span-2">
+              <Input label="Category Name (Malayalam)" {...register('nameMl')} placeholder="വിഭാഗം നാമം" className="font-malayalam" />
             </div>
 
             <Select

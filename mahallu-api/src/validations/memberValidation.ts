@@ -7,6 +7,7 @@ export const createMemberValidation = [
     .withMessage('Name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
+  body('nameMl').optional().trim(),
   body('familyId')
     .notEmpty()
     .withMessage('Family ID is required')
@@ -55,6 +56,7 @@ export const updateMemberValidation = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
+  body('nameMl').optional().trim(),
   body('familyId')
     .optional()
     .isMongoId()

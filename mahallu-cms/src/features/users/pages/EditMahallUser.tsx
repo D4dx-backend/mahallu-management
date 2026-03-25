@@ -15,6 +15,7 @@ import { User } from '@/types';
 
 const userSchema = z.object({
   name: z.string().min(1, 'Full Name is required'),
+  nameMl: z.string().optional(),
   phone: z.string().min(10, 'Phone Number is required'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   status: z.enum(['active', 'inactive']),
@@ -54,6 +55,7 @@ export default function EditMahallUser() {
       setError(null);
       const user = await userService.getById(id);
       setValue('name', user.name);
+      setValue('nameMl', user.nameMl || '');
       setValue('phone', user.phone);
       setValue('email', user.email || '');
       setValue('status', user.status);
@@ -169,6 +171,12 @@ export default function EditMahallUser() {
                 error={errors.name?.message}
                 required
                 placeholder="Full Name"
+              />
+              <Input
+                label="Full Name (Malayalam)"
+                {...register('nameMl')}
+                placeholder="പേര്‍"
+                className="font-malayalam"
               />
               <Input
                 label="Phone Number"

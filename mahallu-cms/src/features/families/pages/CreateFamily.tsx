@@ -19,7 +19,9 @@ import { getTenantId } from '@/utils/tenantHelper';
 const familySchema = z.object({
   varisangyaGrade: z.string().optional(),
   houseName: z.string().min(1, 'House Name is required'),
+  houseNameMl: z.string().optional(),
   familyHead: z.string().optional(),
+  familyHeadMl: z.string().optional(),
   contactNo: z.string().optional().refine(
     (val) => !val || /^\d{10}$/.test(val),
     { message: 'Contact number must be exactly 10 digits' }
@@ -30,7 +32,9 @@ const familySchema = z.object({
   ),
   houseNo: z.string().optional(),
   area: z.string().optional(),
+  areaMl: z.string().optional(),
   place: z.string().optional(),
+  placeMl: z.string().optional(),
 });
 
 type FamilyFormData = z.infer<typeof familySchema>;
@@ -133,13 +137,21 @@ export default function CreateFamily() {
               error={errors.houseName?.message}
               required
               placeholder="House Name"
-              className="md:col-span-2"
             />
+            <Input
+              label="House Name (Malayalam)"
+              {...register('houseNameMl')}
+              placeholder="വീട് പേര്"              className="font-malayalam"            />
             <Input
               label="Family Head"
               {...register('familyHead')}
               placeholder="Family Head Name"
-              className="md:col-span-2"
+            />
+            <Input
+              label="Family Head (Malayalam)"
+              {...register('familyHeadMl')}
+              placeholder="കുടുംബ നാഥൻ"
+              className="font-malayalam"
             />
             <Input
               label="Contact No."
@@ -167,10 +179,21 @@ export default function CreateFamily() {
               {...register('area')}
             />
             <Input
+              label="Area (Malayalam)"
+              {...register('areaMl')}
+              placeholder="പ്രദേശം"
+              className="font-malayalam"
+            />
+            <Input
               label="Place"
               {...register('place')}
               placeholder="Place"
-              className="md:col-span-2"
+            />
+            <Input
+              label="Place (Malayalam)"
+              {...register('placeMl')}
+              placeholder="സ്ഥലം"
+              className="font-malayalam"
             />
           </div>
 

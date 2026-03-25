@@ -16,7 +16,9 @@ import { Member } from '@/types';
 
 const committeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   description: z.string().optional(),
+  descriptionMl: z.string().optional(),
   members: z.array(z.string()).optional(),
   status: z.enum(['active', 'inactive']).optional(),
 });
@@ -84,7 +86,9 @@ export default function CreateCommittee() {
       setError(null);
       await committeeService.create({
         name: data.name,
+        nameMl: data.nameMl,
         description: data.description,
+        descriptionMl: data.descriptionMl,
         members: data.members || [],
         status: data.status || 'active',
       });
@@ -129,10 +133,22 @@ export default function CreateCommittee() {
               className="md:col-span-2"
             />
             <Input
+              label="Name (Malayalam)"
+              {...register('nameMl')}
+              placeholder="കമ്മിറ്റിയുടെ പേര്"
+              className="md:col-span-2 font-malayalam"
+            />
+            <Input
               label="Description"
               {...register('description')}
               placeholder="Description"
               className="md:col-span-2"
+            />
+            <Input
+              label="Description (Malayalam)"
+              {...register('descriptionMl')}
+              placeholder="വിവരണം"
+              className="md:col-span-2 font-malayalam"
             />
             <Select
               label="Status"

@@ -7,6 +7,7 @@ export const createUserValidation = [
     .withMessage('Name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
+  body('nameMl').optional().trim(),
   body('phone')
     .trim()
     .notEmpty()
@@ -48,6 +49,7 @@ export const updateUserValidation = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
+  body('nameMl').optional().trim(),
   body('phone')
     .optional()
     .trim()

@@ -17,8 +17,10 @@ export default function EditTenant() {
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    nameMl: '',
     code: '',
     location: '',
+    locationMl: '',
     type: 'standard' as 'standard' | 'premium' | 'enterprise',
     status: 'active' as 'active' | 'suspended' | 'inactive',
     address: {
@@ -44,8 +46,10 @@ export default function EditTenant() {
       const tenant = await tenantService.getById(id!);
       setFormData({
         name: tenant.name || '',
+        nameMl: tenant.nameMl || '',
         code: tenant.code || '',
         location: tenant.location || '',
+        locationMl: tenant.locationMl || '',
         type: tenant.type || 'standard',
         status: tenant.status || 'active',
         address: {
@@ -178,6 +182,14 @@ export default function EditTenant() {
               />
 
               <Input
+                label="Tenant Name (Malayalam)"
+                value={formData.nameMl}
+                onChange={(e) => handleChange('nameMl', e.target.value)}
+                placeholder="മഹല്ലിന്റെ പേര്"
+                className="font-malayalam"
+              />
+
+              <Input
                 label="Tenant Code"
                 value={formData.code}
                 onChange={(e) => handleChange('code', e.target.value)}
@@ -191,6 +203,14 @@ export default function EditTenant() {
                 onChange={(e) => handleChange('location', e.target.value)}
                 placeholder="Enter location"
                 required
+              />
+
+              <Input
+                label="Location (Malayalam)"
+                value={formData.locationMl}
+                onChange={(e) => handleChange('locationMl', e.target.value)}
+                placeholder="സ്ഥലം"
+                className="font-malayalam"
               />
 
               <Select

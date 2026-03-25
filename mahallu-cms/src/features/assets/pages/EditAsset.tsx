@@ -15,6 +15,7 @@ import { assetService } from '@/services/assetService';
 
 const assetSchema = z.object({
   name: z.string().min(1, 'Asset name is required').max(200),
+  nameMl: z.string().optional(),
   description: z.string().optional(),
   purchaseDate: z.string().min(1, 'Purchase date is required'),
   estimatedValue: z.string().min(1, 'Estimated value is required'),
@@ -23,6 +24,7 @@ const assetSchema = z.object({
   }),
   status: z.enum(['active', 'in_use', 'under_maintenance', 'disposed', 'damaged']).optional(),
   location: z.string().optional(),
+  locationMl: z.string().optional(),
 });
 
 type AssetFormData = z.infer<typeof assetSchema>;
@@ -60,6 +62,8 @@ export default function EditAsset() {
       setValue('category', asset.category);
       setValue('status', asset.status || 'active');
       setValue('location', asset.location || '');
+      setValue('nameMl', asset.nameMl || '');
+      setValue('locationMl', asset.locationMl || '');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load asset');
     } finally {
@@ -73,12 +77,14 @@ export default function EditAsset() {
       setError(null);
       const assetData: any = {
         name: data.name,
+        nameMl: data.nameMl,
         description: data.description || undefined,
         purchaseDate: data.purchaseDate,
         estimatedValue: parseFloat(data.estimatedValue),
         category: data.category,
         status: data.status || 'active',
         location: data.location || undefined,
+        locationMl: data.locationMl,
       };
 
       await assetService.update(id, assetData);
@@ -131,6 +137,12 @@ export default function EditAsset() {
               className="md:col-span-2"
             />
             <Input
+              label="Asset Name (Malayalam)"
+              {...register('nameMl')}
+              placeholder="അസറ്റിന്റെ പേര്"
+              className="md:col-span-2 font-malayalam"
+            />
+            <Input
               label="Purchase Date"
               type="date"
               {...register('purchaseDate')}
@@ -179,6 +191,12 @@ export default function EditAsset() {
               {...register('location')}
               placeholder="e.g. Meeting Hall, Office Room"
               className="md:col-span-2"
+            />
+            <Input
+              label="Location (Malayalam)"
+              {...register('locationMl')}
+              placeholder="സ്ഥലം"
+              className="md:col-span-2 font-malayalam"
             />
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>

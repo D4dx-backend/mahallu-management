@@ -18,9 +18,11 @@ import { useAuthStore } from '@/store/authStore';
 const employeeSchema = z.object({
   instituteId: z.string().min(1, 'Institute is required'),
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   designation: z.string().min(1, 'Designation is required'),
+  designationMl: z.string().optional(),
   department: z.string().optional(),
   joinDate: z.string().min(1, 'Join Date is required'),
   salary: z.string().optional(),
@@ -76,10 +78,12 @@ export default function EditEmployee() {
       setValue('phone', employee.phone || '');
       setValue('email', employee.email || '');
       setValue('designation', employee.designation);
+      setValue('designationMl', employee.designationMl || '');
       setValue('department', employee.department || '');
       setValue('joinDate', employee.joinDate ? new Date(employee.joinDate).toISOString().split('T')[0] : '');
       setValue('salary', employee.salary ? String(employee.salary) : '');
       setValue('qualifications', employee.qualifications || '');
+      setValue('nameMl', employee.nameMl || '');
       setValue('status', employee.status || 'active');
       if (employee.bankAccount) {
         setValue('bankAccount', {
@@ -102,9 +106,11 @@ export default function EditEmployee() {
       const employeeData: any = {
         instituteId: data.instituteId,
         name: data.name,
+        nameMl: data.nameMl,
         phone: data.phone,
         email: data.email || undefined,
         designation: data.designation,
+        designationMl: data.designationMl,
         department: data.department,
         joinDate: data.joinDate,
         salary: data.salary ? Number(data.salary) : undefined,
@@ -159,7 +165,9 @@ export default function EditEmployee() {
               <input type="hidden" {...register('instituteId')} />
             )}
             <Input label="Name" {...register('name')} error={errors.name?.message} required className={userInstituteId ? 'md:col-span-2' : ''} />
+            <Input label="Name (Malayalam)" {...register('nameMl')} placeholder="പേര്" className="font-malayalam" />
             <Input label="Designation" {...register('designation')} error={errors.designation?.message} required />
+            <Input label="Designation (Malayalam)" {...register('designationMl')} placeholder="സ്ഥാനപ്പേര്" className="font-malayalam" />
             <Input label="Department" {...register('department')} />
             <Input label="Phone" type="tel" {...register('phone')} />
             <Input label="Email" type="email" {...register('email')} error={errors.email?.message} />

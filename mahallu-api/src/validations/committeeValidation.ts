@@ -7,7 +7,9 @@ export const createCommitteeValidation = [
     .withMessage('Committee name is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Committee name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('description').optional().trim(),
+  body('descriptionMl').optional().trim(),
   body('members')
     .optional()
     .isArray()
@@ -29,7 +31,9 @@ export const updateCommitteeValidation = [
     .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Committee name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('description').optional().trim(),
+  body('descriptionMl').optional().trim(),
   body('members')
     .optional()
     .isArray()

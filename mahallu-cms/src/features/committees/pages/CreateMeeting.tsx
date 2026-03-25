@@ -17,8 +17,10 @@ import { Committee, Member } from '@/types';
 const meetingSchema = z.object({
   committeeId: z.string().min(1, 'Committee is required'),
   title: z.string().min(1, 'Meeting title is required'),
+  titleMl: z.string().optional(),
   meetingDate: z.string().min(1, 'Meeting date is required'),
   agenda: z.string().optional(),
+  agendaMl: z.string().optional(),
   attendance: z.array(z.string()).optional(),
 });
 
@@ -103,8 +105,10 @@ export default function CreateMeeting() {
       await meetingService.create({
         committeeId: data.committeeId,
         title: data.title,
+        titleMl: data.titleMl,
         meetingDate: data.meetingDate,
         agenda: data.agenda,
+        agendaMl: data.agendaMl,
         attendance: data.attendance || [],
         status: 'scheduled',
       });
@@ -160,6 +164,12 @@ export default function CreateMeeting() {
               className="md:col-span-2"
             />
             <Input
+              label="Meeting Title (Malayalam)"
+              {...register('titleMl')}
+              placeholder="യോഗ തലക്കെട്ട്"
+              className="md:col-span-2 font-malayalam"
+            />
+            <Input
               label="Meeting Date & Time"
               type="datetime-local"
               {...register('meetingDate')}
@@ -171,6 +181,12 @@ export default function CreateMeeting() {
               {...register('agenda')}
               placeholder="Meeting agenda"
               className="md:col-span-2"
+            />
+            <Input
+              label="Agenda (Malayalam)"
+              {...register('agendaMl')}
+              placeholder="അജണ്ഡ"
+              className="md:col-span-2 font-malayalam"
             />
           </div>
 

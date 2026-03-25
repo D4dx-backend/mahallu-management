@@ -65,8 +65,10 @@ const DEFAULT_NOC_DESCRIPTION = `
 const createNocSchema = z.object({
   applicantId: z.string().optional(),
   applicantName: z.string().min(1, 'Applicant name is required'),
+  applicantNameMl: z.string().optional(),
   applicantPhone: z.string().optional(),
   purposeTitle: z.string().min(1, 'Purpose title is required'),
+  purposeTitleMl: z.string().optional(),
   purposeDescription: z.string().min(1, 'Purpose description is required'),
   type: z.enum(['common', 'nikah']),
 });
@@ -189,8 +191,10 @@ export default function NOCList() {
       await registrationService.createNOC({
         applicantId: data.applicantId,
         applicantName: data.applicantName,
+        applicantNameMl: data.applicantNameMl,
         applicantPhone: data.applicantPhone,
         purposeTitle: data.purposeTitle,
+        purposeTitleMl: data.purposeTitleMl,
         purposeDescription: data.purposeDescription,
         type: data.type,
       });
@@ -417,6 +421,12 @@ export default function NOCList() {
                   placeholder="Applicant Name"
                 />
                 <Input
+                  label="Applicant Name (Malayalam)"
+                  {...register('applicantNameMl')}
+                  placeholder="അപേക്ഷകന്റെ പേര്"
+                  className="font-malayalam"
+                />
+                <Input
                   label="Applicant Phone"
                   type="tel"
                   {...register('applicantPhone')}
@@ -429,6 +439,12 @@ export default function NOCList() {
                   required
                   placeholder="Purpose Title"
                   className="md:col-span-2"
+                />
+                <Input
+                  label="Purpose Title (Malayalam)"
+                  {...register('purposeTitleMl')}
+                  placeholder="ഉദ്ദേശ്യം"
+                  className="md:col-span-2 font-malayalam"
                 />
                 <Select
                   label="NOC Type"

@@ -7,6 +7,7 @@ export const createAssetValidation = [
     .withMessage('Asset name is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Asset name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('description').optional().trim(),
   body('purchaseDate')
     .notEmpty()
@@ -38,6 +39,7 @@ export const createAssetValidation = [
     .isIn(['active', 'in_use', 'under_maintenance', 'disposed', 'damaged'])
     .withMessage('Invalid status'),
   body('location').optional().trim(),
+  body('locationMl').optional().trim(),
 ];
 
 export const updateAssetValidation = [
@@ -47,6 +49,7 @@ export const updateAssetValidation = [
     .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Asset name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('description').optional().trim(),
   body('purchaseDate')
     .optional()
@@ -75,6 +78,7 @@ export const updateAssetValidation = [
     .isIn(['active', 'in_use', 'under_maintenance', 'disposed', 'damaged'])
     .withMessage('Invalid status'),
   body('location').optional().trim(),
+  body('locationMl').optional().trim(),
 ];
 
 export const getAssetValidation = [
