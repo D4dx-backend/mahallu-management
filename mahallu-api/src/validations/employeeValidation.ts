@@ -7,6 +7,7 @@ export const createEmployeeValidation = [
     .withMessage('Employee name is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Employee name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('instituteId')
     .notEmpty()
     .withMessage('Institute ID is required')
@@ -18,6 +19,7 @@ export const createEmployeeValidation = [
     .withMessage('Designation is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Designation must be between 2 and 100 characters'),
+  body('designationMl').optional().trim(),
   body('salary')
     .notEmpty()
     .withMessage('Salary is required')
@@ -57,11 +59,13 @@ export const updateEmployeeValidation = [
     .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Employee name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('designation')
     .optional()
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('Designation must be between 2 and 100 characters'),
+  body('designationMl').optional().trim(),
   body('salary')
     .optional()
     .isFloat({ min: 0 })

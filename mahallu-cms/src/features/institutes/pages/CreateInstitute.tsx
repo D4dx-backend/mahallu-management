@@ -14,7 +14,9 @@ import { instituteService } from '@/services/instituteService';
 
 const instituteSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   place: z.string().min(1, 'Place is required'),
+  placeMl: z.string().optional(),
   type: z.enum(['institute', 'madrasa', 'orphanage', 'hospital', 'other']),
   joinDate: z.string().min(1, 'Join Date is required'),
   description: z.string().optional(),
@@ -46,7 +48,9 @@ export default function CreateInstitute() {
       setError(null);
       const instituteData: any = {
         name: data.name,
+        nameMl: data.nameMl,
         place: data.place,
+        placeMl: data.placeMl,
         type: data.type,
         joinDate: data.joinDate,
         description: data.description,
@@ -100,6 +104,12 @@ export default function CreateInstitute() {
               placeholder="Institute Name"
               className="md:col-span-2"
             />
+            <Input
+              label="Name (Malayalam)"
+              {...register('nameMl')}
+              placeholder="സ്ഥാപനത്തിന്റെ പേര്"
+              className="md:col-span-2 font-malayalam"
+            />
             <Select
               label="Type"
               options={[
@@ -119,6 +129,12 @@ export default function CreateInstitute() {
               error={errors.place?.message}
               required
               placeholder="Place"
+            />
+            <Input
+              label="Place (Malayalam)"
+              {...register('placeMl')}
+              placeholder="സ്ഥലം"
+              className="font-malayalam"
             />
             <Input
               label="Join Date"

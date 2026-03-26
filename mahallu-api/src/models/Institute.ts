@@ -3,8 +3,10 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IInstitute extends Document {
   tenantId: mongoose.Types.ObjectId;
   name: string;
+  nameMl?: string;
   place: string;
-  type: 'institute' | 'madrasa' | 'orphanage' | 'hospital' | 'other';
+  placeMl?: string;
+  type: 'institute' | 'madrasa' | 'orphanage' | 'hospital' | 'other' | 'program';
   joinDate: Date;
   description?: string;
   contactNo?: string;
@@ -27,14 +29,22 @@ const InstituteSchema = new Schema<IInstitute>(
       required: [true, 'Institute name is required'],
       trim: true,
     },
+    nameMl: {
+      type: String,
+      trim: true,
+    },
     place: {
       type: String,
       required: [true, 'Place is required'],
       trim: true,
     },
+    placeMl: {
+      type: String,
+      trim: true,
+    },
     type: {
       type: String,
-      enum: ['institute', 'madrasa', 'orphanage', 'hospital', 'other'],
+      enum: ['institute', 'madrasa', 'orphanage', 'hospital', 'other', 'program'],
       required: true,
     },
     joinDate: {

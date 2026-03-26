@@ -3,12 +3,14 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IAsset extends Document {
   tenantId: mongoose.Types.ObjectId;
   name: string;
+  nameMl?: string;
   description?: string;
   purchaseDate: Date;
   estimatedValue: number;
   category: 'furniture' | 'electronics' | 'vehicle' | 'building' | 'land' | 'equipment' | 'other';
   status: 'active' | 'in_use' | 'under_maintenance' | 'disposed' | 'damaged';
   location?: string;
+  locationMl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +41,10 @@ const AssetSchema = new Schema<IAsset>(
       required: [true, 'Asset name is required'],
       trim: true,
     },
+    nameMl: {
+      type: String,
+      trim: true,
+    },
     description: {
       type: String,
       trim: true,
@@ -63,6 +69,10 @@ const AssetSchema = new Schema<IAsset>(
       default: 'active',
     },
     location: {
+      type: String,
+      trim: true,
+    },
+    locationMl: {
       type: String,
       trim: true,
     },

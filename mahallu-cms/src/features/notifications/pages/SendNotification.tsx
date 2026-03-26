@@ -14,7 +14,9 @@ export default function SendNotification() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState('');
+  const [titleMl, setTitleMl] = useState('');
   const [message, setMessage] = useState('');
+  const [messageMl, setMessageMl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [recipientType, setRecipientType] = useState<'all' | 'user' | 'member'>('all');
@@ -64,7 +66,9 @@ export default function SendNotification() {
 
       await notificationService.create({
         title: title.trim(),
+        titleMl: titleMl.trim() || undefined,
         message: message.trim(),
+        messageMl: messageMl.trim() || undefined,
         imageUrl,
         recipientType: recipientType === 'all' ? 'all' : 'individual',
         recipientId: recipientType !== 'all' ? recipientId.trim() : undefined,
@@ -123,6 +127,13 @@ export default function SendNotification() {
             required
             icon={<FiBell className="h-4 w-4" />}
           />
+          <Input
+            label="Title (Malayalam)"
+            value={titleMl}
+            onChange={(e) => setTitleMl(e.target.value)}
+            placeholder="തലക്കെട്ട്"
+            className="font-malayalam"
+          />
 
           {/* Message */}
           <div>
@@ -136,6 +147,20 @@ export default function SendNotification() {
               placeholder="Enter notification message…"
               required
               className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+            />
+          </div>
+
+          {/* Message (Malayalam) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Message (Malayalam) <span className="text-gray-400 text-xs font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={messageMl}
+              onChange={(e) => setMessageMl(e.target.value)}
+              rows={3}
+              placeholder="സന്ദേശം"
+              className="font-malayalam w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             />
           </div>
 

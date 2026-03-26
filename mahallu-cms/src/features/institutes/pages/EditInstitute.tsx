@@ -15,7 +15,9 @@ import { instituteService } from '@/services/instituteService';
 
 const instituteSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   place: z.string().min(1, 'Place is required'),
+  placeMl: z.string().optional(),
   type: z.enum(['institute', 'madrasa', 'orphanage', 'hospital', 'other']),
   joinDate: z.string().min(1, 'Join Date is required'),
   description: z.string().optional(),
@@ -60,6 +62,8 @@ export default function EditInstitute() {
       setValue('contactNo', institute.contactNo || '');
       setValue('email', institute.email || '');
       setValue('status', institute.status || 'active');
+      setValue('nameMl', institute.nameMl || '');
+      setValue('placeMl', institute.placeMl || '');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load institute');
     } finally {
@@ -73,7 +77,9 @@ export default function EditInstitute() {
       setError(null);
       const instituteData: any = {
         name: data.name,
+        nameMl: data.nameMl,
         place: data.place,
+        placeMl: data.placeMl,
         type: data.type,
         joinDate: data.joinDate,
         description: data.description,
@@ -124,7 +130,9 @@ export default function EditInstitute() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Name" {...register('name')} error={errors.name?.message} required />
+            <Input label="Name (Malayalam)" {...register('nameMl')} placeholder="സ്ഥാപനത്തിന്റെ പേര്" className="font-malayalam" />
             <Input label="Place" {...register('place')} error={errors.place?.message} required />
+            <Input label="Place (Malayalam)" {...register('placeMl')} placeholder="സ്ഥലം" className="font-malayalam" />
             <Select
               label="Type"
               {...register('type')}

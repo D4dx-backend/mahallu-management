@@ -12,6 +12,7 @@ export const createMeetingValidation = [
     .withMessage('Meeting title is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Meeting title must be between 2 and 200 characters'),
+  body('titleMl').optional().trim(),
   body('meetingDate')
     .notEmpty()
     .withMessage('Meeting date is required')
@@ -34,6 +35,7 @@ export const createMeetingValidation = [
     .isFloat({ min: 0, max: 100 })
     .withMessage('Attendance percent must be between 0 and 100'),
   body('agenda').optional().trim(),
+  body('agendaMl').optional().trim(),
   body('minutes').optional().trim(),
   body('status')
     .optional()
@@ -52,6 +54,7 @@ export const updateMeetingValidation = [
     .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Meeting title must be between 2 and 200 characters'),
+  body('titleMl').optional().trim(),
   body('meetingDate')
     .optional()
     .isISO8601()
@@ -73,6 +76,7 @@ export const updateMeetingValidation = [
     .isFloat({ min: 0, max: 100 })
     .withMessage('Attendance percent must be between 0 and 100'),
   body('agenda').optional().trim(),
+  body('agendaMl').optional().trim(),
   body('minutes').optional().trim(),
   body('status')
     .optional()

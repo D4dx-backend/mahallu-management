@@ -15,7 +15,9 @@ import { programService } from '@/services/programService';
 
 const programSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   place: z.string().min(1, 'Place is required'),
+  placeMl: z.string().optional(),
   joinDate: z.string().min(1, 'Join Date is required'),
   description: z.string().optional(),
   contactNo: z.string().optional(),
@@ -61,6 +63,8 @@ export default function EditProgram() {
       setValue('description', program.description || '');
       setValue('contactNo', program.contactNo || '');
       setValue('email', program.email || '');
+      setValue('nameMl', program.nameMl || '');
+      setValue('placeMl', program.placeMl || '');
       setValue('status', program.status || 'active');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load program');
@@ -75,7 +79,9 @@ export default function EditProgram() {
       setError(null);
       const programData: any = {
         name: data.name,
+        nameMl: data.nameMl,
         place: data.place,
+        placeMl: data.placeMl,
         joinDate: data.joinDate,
         description: data.description,
         contactNo: data.contactNo,
@@ -134,7 +140,9 @@ export default function EditProgram() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Name" {...register('name')} error={errors.name?.message} required />
+            <Input label="Name (Malayalam)" {...register('nameMl')} placeholder="പ്രോഗ്രാമിന്റെ പേര്" className="font-malayalam" />
             <Input label="Place" {...register('place')} error={errors.place?.message} required />
+            <Input label="Place (Malayalam)" {...register('placeMl')} placeholder="സ്ഥലം" className="font-malayalam" />
             <Input label="Join Date" type="date" {...register('joinDate')} error={errors.joinDate?.message} />
             <Input label="Contact No" {...register('contactNo')} error={errors.contactNo?.message} />
             <Input label="Email" type="email" {...register('email')} error={errors.email?.message} />

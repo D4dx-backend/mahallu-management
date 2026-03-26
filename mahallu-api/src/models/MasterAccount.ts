@@ -17,6 +17,7 @@ export interface ICategory extends Document {
   tenantId: mongoose.Types.ObjectId;
   instituteId?: mongoose.Types.ObjectId;
   name: string;
+  nameMl?: string;
   description?: string;
   type: 'income' | 'expense';
   createdAt: Date;
@@ -36,6 +37,7 @@ export interface ILedger extends Document {
   tenantId: mongoose.Types.ObjectId;
   instituteId?: mongoose.Types.ObjectId;
   name: string;
+  nameMl?: string;
   description?: string;
   type: 'income' | 'expense';
   createdAt: Date;
@@ -100,6 +102,7 @@ const CategorySchema = new Schema<ICategory>(
       default: null,
     },
     name: { type: String, required: true, trim: true },
+    nameMl: { type: String, trim: true },
     description: String,
     type: {
       type: String,
@@ -143,6 +146,7 @@ const LedgerSchema = new Schema<ILedger>(
       default: null,
     },
     name: { type: String, required: true, trim: true },
+    nameMl: { type: String, trim: true },
     description: String,
     type: {
       type: String,

@@ -1,4 +1,4 @@
-# Mahallu Management API — Full Endpoint Documentation
+﻿# Mahallu Management API — Full Endpoint Documentation
 
 Base URL: `http://localhost:5000` (or your deployed URL)
 
@@ -20,16 +20,21 @@ Base URL: `http://localhost:5000` (or your deployed URL)
 7. [Members](#7-members)
 8. [Institutes](#8-institutes)
 9. [Programs](#9-programs)
-10. [Madrasa](#10-madrasa)
-11. [Committees](#11-committees)
-12. [Meetings](#12-meetings)
-13. [Registrations](#13-registrations)
-14. [Collectibles](#14-collectibles)
-15. [Social](#15-social)
-16. [Reports](#16-reports)
-17. [Notifications](#17-notifications)
-18. [Master Accounts](#18-master-accounts)
-19. [Member User](#19-member-user)
+10. [Committees](#10-committees)
+11. [Meetings](#11-meetings)
+12. [Registrations](#12-registrations)
+13. [Collectibles](#13-collectibles)
+14. [Employees](#14-employees)
+15. [Assets](#15-assets)
+16. [Petty Cash](#16-petty-cash)
+17. [Salary](#17-salary)
+18. [Social](#18-social)
+19. [Reports](#19-reports)
+20. [Accounting Reports](#20-accounting-reports)
+21. [Notifications](#21-notifications)
+22. [Master Accounts](#22-master-accounts)
+23. [Member User](#23-member-user)
+24. [Upload](#24-upload)
 
 ---
 
@@ -41,12 +46,10 @@ Base URL: `http://localhost:5000` (or your deployed URL)
 | `GET` | `/api-docs` | Swagger UI | No |
 
 ### GET /api/health
-- **Description:** Server health check.
-- **Headers:** `Accept: application/json`
-- **Response:** Health status payload.
+- **Response:** Server health status.
 
 ### GET /api-docs
-- **Description:** Interactive API documentation (Swagger).
+- **Description:** Interactive Swagger UI documentation.
 
 ---
 
@@ -56,11 +59,16 @@ Base URL: `http://localhost:5000` (or your deployed URL)
 |--------|----------|-------------|------|
 | `POST` | `/api/auth/login` | Login with phone & password | No |
 | `POST` | `/api/auth/send-otp` | Send OTP to phone | No |
-| `POST` | `/api/auth/verify-otp` | Verify OTP | No |
+| `POST` | `/api/auth/verify-otp` | Verify OTP (returns role selector if multi-role) | No |
+| `POST` | `/api/auth/select-account` | Select account role after multi-role OTP login | No |
 | `GET` | `/api/auth/me` | Current user profile | Yes |
 | `POST` | `/api/auth/change-password` | Change password | Yes |
+| `PUT` | `/api/auth/register-device` | Register OneSignal device ID | Yes |
+
+> **Multi-Role Login Flow:** If the same phone number is linked to multiple roles (e.g. Community Member + Mahallu Admin + Institute Admin) within the same mahallu, `verify-otp` returns `requiresRoleSelection: true` instead of a token. The client must then call `select-account` with the chosen `userId` and the `preAuthToken` to receive the session JWT.
 
 ### POST /api/auth/login
+- **Note:** For non-member roles only. Members must use OTP login.
 - **Body:**
 ```json
 {
@@ -68,7 +76,17 @@ Base URL: `http://localhost:5000` (or your deployed URL)
   "password": "admin123"
 }
 ```
-- **Response:** JWT token and user/tenant info.
+- **Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "_id": "...", "name": "Ahmed Ali", "phone": "9999999999", "role": "mahall", "tenantId": "...", "status": "active" },
+    "token": "eyJhbGci..."
+  }
+}
+```
+- **Errors:** `400` validation, `401` invalid credentials, `403` inactive/member account
 
 ### POST /api/auth/send-otp
 - **Body:**
@@ -77,6 +95,16 @@ Base URL: `http://localhost:5000` (or your deployed URL)
   "phone": "9999999999"
 }
 ```
+- **Response (200):**
+```json
+{
+  "success": true,
+  "message": "OTP sent successfully",
+  "otp": "123456"
+}
+```
+- `otp` field is only returned in **development** mode.
+- **Errors:** `400` validation, `403` inactive, `404` user not found, `429` rate limited (max 1/min)
 
 ### POST /api/auth/verify-otp
 - **Body:**
@@ -86,10 +114,71 @@ Base URL: `http://localhost:5000` (or your deployed URL)
   "otp": "123456"
 }
 ```
+- **Response — single role (direct login, 200):**
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "_id": "...", "name": "Ahmed Ali", "role": "member", "tenantId": "...", "memberId": "..." },
+    "token": "eyJhbGci..."
+  }
+}
+```
+- **Response — multiple roles (role selection required, 200):**
+```json
+{
+  "success": true,
+  "data": {
+    "requiresRoleSelection": true,
+    "preAuthToken": "eyJhbGci...",
+    "accounts": [
+      {
+        "userId": "<userId>",
+        "role": "member",
+        "name": "Jahfar Swadikh K",
+        "tenantId": "<tenantId>",
+        "tenantName": "Al-Huda Mahallu"
+      },
+      {
+        "userId": "<userId>",
+        "role": "institute",
+        "name": "Jahfar Swadikh K",
+        "tenantId": "<tenantId>",
+        "tenantName": "Al-Huda Mahallu",
+        "instituteId": "<instituteId>",
+        "instituteName": "Al-Huda Madrasa"
+      }
+    ]
+  }
+}
+```
+- `preAuthToken` expires in **5 minutes**. Pass it to `select-account`.
+- **Errors:** `400` validation, `401` invalid/expired OTP, `403` inactive, `429` >5 failed attempts
+
+### POST /api/auth/select-account
+- **Body:**
+```json
+{
+  "preAuthToken": "eyJhbGci...",
+  "userId": "<userId from accounts list>"
+}
+```
+- **Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "_id": "...", "name": "Jahfar Swadikh K", "role": "member" },
+    "token": "eyJhbGci..."
+  }
+}
+```
+- Issues a full **7-day** session JWT for the selected role.
+- **Errors:** `400` missing fields, `401` expired/invalid preAuthToken or phone mismatch, `403` inactive, `404` user not found
 
 ### GET /api/auth/me
 - **Headers:** `Authorization: Bearer <token>`, `x-tenant-id: <tenantId>`
-- **Response:** Current user and tenant context.
+- **Response (200):** `{ "success": true, "data": { <user object> } }`
 
 ### POST /api/auth/change-password
 - **Headers:** `Authorization`, `x-tenant-id`
@@ -100,10 +189,24 @@ Base URL: `http://localhost:5000` (or your deployed URL)
   "newPassword": "newpassword123"
 }
 ```
+- **Response (200):** `{ "success": true, "message": "Password changed successfully" }`
+- **Errors:** `400` validation, `401` wrong current password
+
+### PUT /api/auth/register-device
+- **Headers:** `Authorization`
+- **Body:**
+```json
+{
+  "oneSignalPlayerId": "<onesignal-player-id>"
+}
+```
+- **Response (200):** `{ "success": true, "message": "Device registered successfully" }`
 
 ---
 
 ## 3. Dashboard
+
+All require: `Authorization`, `x-tenant-id`.
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
@@ -112,25 +215,37 @@ Base URL: `http://localhost:5000` (or your deployed URL)
 | `GET` | `/api/dashboard/activity-timeline` | Activity timeline | Yes |
 | `GET` | `/api/dashboard/financial-summary` | Financial balance summary | Yes |
 
-All require: `Authorization`, `x-tenant-id`.
+### GET /api/dashboard/stats
+- **Roles:** all
+- **Response:** Total members, families, collections, programs, etc.
+
+### GET /api/dashboard/recent-families
+- **Roles:** super_admin, mahall, survey, institute
+
+### GET /api/dashboard/activity-timeline
+- **Roles:** super_admin, mahall, survey, institute
+
+### GET /api/dashboard/financial-summary
+- **Roles:** super_admin, mahall, institute
 
 ---
 
 ## 4. Tenants (Super Admin)
 
+All require: `Authorization`. Super admin only unless noted.
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| `GET` | `/api/tenants` | List tenants | Yes |
-| `GET` | `/api/tenants/:tenantId` | Get tenant by ID | Yes |
-| `GET` | `/api/tenants/:tenantId/stats` | Get tenant stats | Yes |
+| `GET` | `/api/tenants` | List all tenants | Yes |
+| `GET` | `/api/tenants/:id` | Get tenant by ID | Yes |
+| `GET` | `/api/tenants/:id/stats` | Get tenant statistics | Yes |
 | `POST` | `/api/tenants` | Create tenant | Yes |
-| `PUT` | `/api/tenants/:tenantId` | Update tenant | Yes |
-| `DELETE` | `/api/tenants/:tenantId` | Delete tenant | Yes |
-| `POST` | `/api/tenants/:tenantId/suspend` | Suspend tenant | Yes |
-| `POST` | `/api/tenants/:tenantId/activate` | Activate tenant | Yes |
+| `PUT` | `/api/tenants/:id` | Update tenant | Yes |
+| `DELETE` | `/api/tenants/:id` | Delete tenant | Yes |
+| `POST` | `/api/tenants/:id/suspend` | Suspend tenant | Yes |
+| `POST` | `/api/tenants/:id/activate` | Activate tenant | Yes |
 
 ### POST /api/tenants
-- **Body:**
 ```json
 {
   "name": "Kozhikode Mahallu",
@@ -144,8 +259,7 @@ All require: `Authorization`, `x-tenant-id`.
 }
 ```
 
-### PUT /api/tenants/:tenantId
-- **Body (example):**
+### PUT /api/tenants/:id
 ```json
 {
   "name": "Kozhikode Mahallu Updated",
@@ -157,17 +271,18 @@ All require: `Authorization`, `x-tenant-id`.
 
 ## 5. Users
 
+All require: `Authorization`, `x-tenant-id`.
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/users` | List users | Yes |
-| `GET` | `/api/users/:userId` | Get user by ID | Yes |
+| `GET` | `/api/users/:id` | Get user by ID | Yes |
 | `POST` | `/api/users` | Create user | Yes |
-| `PUT` | `/api/users/:userId` | Update user | Yes |
-| `PUT` | `/api/users/:userId/status` | Update user status | Yes |
-| `DELETE` | `/api/users/:userId` | Delete user (soft) | Yes |
+| `PUT` | `/api/users/:id` | Update user | Yes |
+| `PUT` | `/api/users/:id/status` | Update user status | Yes |
+| `DELETE` | `/api/users/:id` | Delete user | Yes |
 
 ### POST /api/users
-- **Body:**
 ```json
 {
   "name": "Ahmed Ali",
@@ -183,286 +298,639 @@ All require: `Authorization`, `x-tenant-id`.
   }
 }
 ```
+- `role` values: `mahall` | `survey` | `institute` | `member`
+- For `institute` role, also include `"instituteId": "<id>"`
 
-### PUT /api/users/:userId/status
-- **Body:** `{ "status": "inactive" }`
+### PUT /api/users/:id
+- Same fields as POST (all optional).
+
+### PUT /api/users/:id/status
+```json
+{ "status": "inactive" }
+```
 
 ---
 
 ## 6. Families
 
+All require: `Authorization`, `x-tenant-id`.
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/families` | List families | Yes |
-| `GET` | `/api/families/:familyId` | Get family by ID | Yes |
+| `GET` | `/api/families/:id` | Get family by ID | Yes |
 | `POST` | `/api/families` | Create family | Yes |
-| `PUT` | `/api/families/:familyId` | Update family | Yes |
-| `DELETE` | `/api/families/:familyId` | Delete family | Yes |
+| `PUT` | `/api/families/:id` | Update family | Yes |
+| `DELETE` | `/api/families/:id` | Delete family | Yes |
 
 ### POST /api/families
-- **Body:**
 ```json
 {
   "houseName": "Al-Hamd House",
   "state": "Kerala",
   "district": "Kozhikode",
   "lsgName": "Kozhikode Corporation",
-  "village": "Kozhikode"
+  "village": "Kozhikode",
+  "panchayathWardNo": "12",
+  "postOffice": "Kozhikode",
+  "pinCode": "673001"
 }
 ```
 
-### PUT /api/families/:familyId
-- **Body (example):** `{ "status": "approved" }`
+### PUT /api/families/:id
+```json
+{
+  "houseName": "Al-Hamd House Updated",
+  "status": "approved"
+}
+```
+- `status` values: `pending` | `approved` | `rejected`
 
 ---
 
 ## 7. Members
 
+All require: `Authorization`, `x-tenant-id`.
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/members` | List members | Yes |
 | `GET` | `/api/members/family/:familyId` | Get members by family | Yes |
-| `GET` | `/api/members/:memberId` | Get member by ID | Yes |
+| `GET` | `/api/members/:id` | Get member by ID | Yes |
 | `POST` | `/api/members` | Create member | Yes |
-| `PUT` | `/api/members/:memberId` | Update member | Yes |
-| `PUT` | `/api/members/:memberId/status` | Update member status | Yes |
-| `DELETE` | `/api/members/:memberId` | Delete member (soft) | Yes |
+| `PUT` | `/api/members/:id` | Update member | Yes |
+| `PUT` | `/api/members/:id/status` | Update member status | Yes |
+| `DELETE` | `/api/members/:id` | Delete member | Yes |
 
 ### POST /api/members
-- **Body:**
 ```json
 {
   "name": "Ahmed Ali",
   "familyId": "<familyId>",
-  "familyName": "Al-Hamd House"
+  "familyName": "Al-Hamd House",
+  "age": 30,
+  "gender": "male",
+  "bloodGroup": "A+ve",
+  "phone": "9876543210",
+  "email": "ahmed@example.com",
+  "healthStatus": "Healthy",
+  "education": "Degree",
+  "maritalStatus": "Married",
+  "numberOfMarriages": 1,
+  "occupation": "Engineer",
+  "monthlyIncome": 25000,
+  "isOrphan": false,
+  "isHandicapped": false,
+  "isPensioner": false
 }
 ```
+- A member User account (`role: member`) is auto-created if `phone` is provided.
+- A phone already used by another **member** account in the same tenant is rejected. Phones shared with other roles (e.g. institute admin) are allowed.
 
-### PUT /api/members/:memberId/status
-- **Body:** `{ "status": "inactive" }`
+### PUT /api/members/:id
+- Same fields as POST (all optional).
+
+### PUT /api/members/:id/status
+```json
+{ "status": "inactive" }
+```
 
 ---
 
 ## 8. Institutes
 
+All require: `Authorization`, `x-tenant-id`.
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/institutes` | List institutes | Yes |
-| `GET` | `/api/institutes/:instituteId` | Get institute by ID | Yes |
+| `GET` | `/api/institutes/:id` | Get institute by ID | Yes |
 | `POST` | `/api/institutes` | Create institute | Yes |
-| `PUT` | `/api/institutes/:instituteId` | Update institute | Yes |
-| `DELETE` | `/api/institutes/:instituteId` | Delete institute | Yes |
+| `PUT` | `/api/institutes/:id` | Update institute | Yes |
+| `DELETE` | `/api/institutes/:id` | Delete institute | Yes |
 
 ### POST /api/institutes
-- **Body:**
 ```json
 {
   "name": "Al-Azhar Institute",
   "place": "Kozhikode",
-  "type": "institute"
+  "type": "institute",
+  "description": "Educational institute",
+  "phone": "9876540000",
+  "email": "institute@example.com"
 }
 ```
+- `type` values: `institute` | `madrasa` | `orphanage` | `other`
 
-### PUT /api/institutes/:instituteId
-- **Body (example):** `{ "status": "active" }`
+### PUT /api/institutes/:id
+```json
+{
+  "name": "Updated Name",
+  "status": "active"
+}
+```
 
 ---
 
 ## 9. Programs
 
+All require: `Authorization`, `x-tenant-id`.
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/programs` | List programs | Yes |
-| `GET` | `/api/programs/:programId` | Get program by ID | Yes |
+| `GET` | `/api/programs/:id` | Get program by ID | Yes |
 | `POST` | `/api/programs` | Create program | Yes |
-| `PUT` | `/api/programs/:programId` | Update program | Yes |
-| `DELETE` | `/api/programs/:programId` | Delete program | Yes |
+| `PUT` | `/api/programs/:id` | Update program | Yes |
+| `DELETE` | `/api/programs/:id` | Delete program | Yes |
 
 ### POST /api/programs
-- **Body:**
 ```json
 {
   "name": "Youth Education Program",
+  "description": "Annual education initiative",
   "place": "Kozhikode",
-  "type": "program"
+  "startDate": "2024-03-01T09:00:00.000Z",
+  "endDate": "2024-03-01T17:00:00.000Z",
+  "organizer": "Mahallu Committee",
+  "type": "educational"
 }
 ```
 
-### PUT /api/programs/:programId
-- **Body (example):** `{ "status": "active" }`
-
----
-
-## 10. Madrasa
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `GET` | `/api/madrasa` | List madrasas | Yes |
-| `GET` | `/api/madrasa/:madrasaId` | Get madrasa by ID | Yes |
-| `POST` | `/api/madrasa` | Create madrasa | Yes |
-| `PUT` | `/api/madrasa/:madrasaId` | Update madrasa | Yes |
-| `DELETE` | `/api/madrasa/:madrasaId` | Delete madrasa | Yes |
-
-### POST /api/madrasa
-- **Body:**
+### PUT /api/programs/:id
 ```json
 {
-  "name": "Darul Uloom Madrasa",
-  "place": "Kozhikode",
-  "type": "madrasa"
+  "name": "Updated Program Name",
+  "status": "completed"
 }
 ```
 
-### PUT /api/madrasa/:madrasaId
-- **Body (example):** `{ "status": "active" }`
-
 ---
 
-## 11. Committees
+## 10. Committees
+
+All require: `Authorization`, `x-tenant-id`.
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/committees` | List committees | Yes |
-| `GET` | `/api/committees/:committeeId` | Get committee by ID | Yes |
-| `GET` | `/api/committees/:committeeId/meetings` | Get committee meetings | Yes |
+| `GET` | `/api/committees/:id` | Get committee by ID | Yes |
+| `GET` | `/api/committees/:id/meetings` | Get meetings of a committee | Yes |
 | `POST` | `/api/committees` | Create committee | Yes |
-| `PUT` | `/api/committees/:committeeId` | Update committee | Yes |
-| `DELETE` | `/api/committees/:committeeId` | Delete committee | Yes |
+| `PUT` | `/api/committees/:id` | Update committee | Yes |
+| `DELETE` | `/api/committees/:id` | Delete committee | Yes |
 
 ### POST /api/committees
-- **Body:**
 ```json
 {
   "name": "Finance Committee",
-  "description": "Manages financial matters"
+  "description": "Manages financial matters of the mahallu",
+  "members": [
+    { "memberId": "<memberId>", "role": "chairman" },
+    { "memberId": "<memberId>", "role": "secretary" }
+  ]
 }
 ```
 
-### PUT /api/committees/:committeeId
-- **Body (example):** `{ "status": "active" }`
+### PUT /api/committees/:id
+```json
+{
+  "name": "Updated Committee Name",
+  "status": "active"
+}
+```
 
 ---
 
-## 12. Meetings
+## 11. Meetings
+
+All require: `Authorization`, `x-tenant-id`.
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/meetings` | List meetings | Yes |
-| `GET` | `/api/meetings/:meetingId` | Get meeting by ID | Yes |
+| `GET` | `/api/meetings/:id` | Get meeting by ID | Yes |
 | `POST` | `/api/meetings` | Create meeting | Yes |
-| `PUT` | `/api/meetings/:meetingId` | Update meeting | Yes |
-| `DELETE` | `/api/meetings/:meetingId` | Delete meeting | Yes |
+| `PUT` | `/api/meetings/:id` | Update meeting | Yes |
+| `DELETE` | `/api/meetings/:id` | Delete meeting | Yes |
 
 ### POST /api/meetings
-- **Body:**
 ```json
 {
   "committeeId": "<committeeId>",
-  "title": "Monthly Meeting",
-  "meetingDate": "2024-02-01T10:00:00.000Z"
+  "title": "Monthly Finance Meeting",
+  "description": "Review monthly finances",
+  "meetingDate": "2024-02-01T10:00:00.000Z",
+  "venue": "Mahallu Office",
+  "agenda": "Financial review, upcoming programs"
 }
 ```
 
-### PUT /api/meetings/:meetingId
-- **Body (example):** `{ "status": "completed" }`
+### PUT /api/meetings/:id
+```json
+{
+  "title": "Updated Meeting Title",
+  "status": "completed",
+  "minutes": "Meeting concluded with approval of budget."
+}
+```
 
 ---
 
-## 13. Registrations
+## 12. Registrations
+
+All require: `Authorization`, `x-tenant-id`.
 
 ### Nikah
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/registrations/nikah` | List nikah registrations | Yes |
-| `GET` | `/api/registrations/nikah/:nikahId` | Get nikah by ID | Yes |
+| `GET` | `/api/registrations/nikah/:id` | Get nikah by ID | Yes |
 | `POST` | `/api/registrations/nikah` | Create nikah registration | Yes |
+| `PUT` | `/api/registrations/nikah/:id` | Update nikah registration | Yes |
 
-**POST body (nikah):**
+#### POST /api/registrations/nikah
 ```json
 {
   "groomName": "Ahmed Ali",
+  "groomAge": 28,
+  "groomAddress": "Kozhikode",
   "brideName": "Fatima Khan",
-  "nikahDate": "2024-02-14T10:00:00.000Z"
+  "brideAge": 24,
+  "brideAddress": "Malappuram",
+  "nikahDate": "2024-02-14T10:00:00.000Z",
+  "venue": "Mahallu Mosque",
+  "mahr": 10000,
+  "witnesses": ["Witness 1", "Witness 2"]
+}
+```
+
+#### PUT /api/registrations/nikah/:id
+```json
+{
+  "status": "approved",
+  "remarks": "Documents verified"
 }
 ```
 
 ### Death
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/registrations/death` | List death registrations | Yes |
-| `GET` | `/api/registrations/death/:deathId` | Get death by ID | Yes |
+| `GET` | `/api/registrations/death/:id` | Get death by ID | Yes |
 | `POST` | `/api/registrations/death` | Create death registration | Yes |
+| `PUT` | `/api/registrations/death/:id` | Update death registration | Yes |
 
-**POST body (death):**
+#### POST /api/registrations/death
 ```json
 {
   "deceasedName": "Ahmed Ali",
-  "deathDate": "2024-02-10T00:00:00.000Z"
+  "age": 65,
+  "gender": "male",
+  "deathDate": "2024-02-10T00:00:00.000Z",
+  "causeOfDeath": "Natural causes",
+  "familyId": "<familyId>",
+  "memberId": "<memberId>"
+}
+```
+
+#### PUT /api/registrations/death/:id
+```json
+{
+  "status": "approved",
+  "remarks": "Certificate issued"
 }
 ```
 
 ### NOC
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/registrations/noc` | List NOCs | Yes |
-| `GET` | `/api/registrations/noc/:nocId` | Get NOC by ID | Yes |
+| `GET` | `/api/registrations/noc/:id` | Get NOC by ID | Yes |
 | `POST` | `/api/registrations/noc` | Create NOC | Yes |
-| `PUT` | `/api/registrations/noc/:nocId` | Update NOC | Yes |
+| `PUT` | `/api/registrations/noc/:id` | Update NOC | Yes |
 
-**POST body (NOC):**
+#### POST /api/registrations/noc
 ```json
 {
   "applicantName": "Ahmed Ali",
-  "purpose": "Travel abroad for business",
-  "type": "common"
+  "memberId": "<memberId>",
+  "purpose": "Travel abroad for employment",
+  "type": "travel",
+  "destination": "UAE",
+  "requestDate": "2024-02-01T00:00:00.000Z"
 }
 ```
+- `type` values: `common` | `travel` | `employment` | `other`
 
-**PUT body (NOC):**
+#### PUT /api/registrations/noc/:id
 ```json
 {
   "status": "approved",
-  "remarks": "Approved"
+  "remarks": "NOC granted"
 }
 ```
+- `status` values: `pending` | `approved` | `rejected`
 
 ---
 
-## 14. Collectibles
+## 13. Collectibles
+
+All require: `Authorization`, `x-tenant-id`.
+
+### Varisangya
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| `GET` | `/api/collectibles/varisangya` | List varisangya | Yes |
+| `GET` | `/api/collectibles/varisangya` | List varisangya collections | Yes |
+| `GET` | `/api/collectibles/receipt-next` | Get next receipt number | Yes |
 | `POST` | `/api/collectibles/varisangya` | Create varisangya | Yes |
-| `GET` | `/api/collectibles/zakat` | List zakat | Yes |
-| `POST` | `/api/collectibles/zakat` | Create zakat | Yes |
-| `GET` | `/api/collectibles/wallet` | Get wallets | Yes |
-| `GET` | `/api/collectibles/wallet/:walletId/transactions` | Get wallet transactions | Yes |
+| `PUT` | `/api/collectibles/varisangya/:id` | Update varisangya | Yes |
+| `DELETE` | `/api/collectibles/varisangya/:id` | Delete varisangya | Yes |
 
-### POST /api/collectibles/varisangya
-- **Body:**
+#### POST /api/collectibles/varisangya
 ```json
 {
   "familyId": "<familyId>",
   "amount": 500,
   "paymentDate": "2024-02-01T00:00:00.000Z",
-  "paymentMethod": "Cash"
+  "paymentMethod": "Cash",
+  "receiptNo": "REC-001",
+  "collectedBy": "<userId>",
+  "remarks": "Monthly collection"
 }
 ```
 
-### POST /api/collectibles/zakat
-- **Body:**
+#### PUT /api/collectibles/varisangya/:id
+```json
+{
+  "amount": 600,
+  "paymentMethod": "Bank Transfer",
+  "remarks": "Updated amount"
+}
+```
+
+### Zakat
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/collectibles/zakat` | List zakat collections | Yes |
+| `POST` | `/api/collectibles/zakat` | Create zakat | Yes |
+| `PUT` | `/api/collectibles/zakat/:id` | Update zakat | Yes |
+| `DELETE` | `/api/collectibles/zakat/:id` | Delete zakat | Yes |
+
+#### POST /api/collectibles/zakat
 ```json
 {
   "payerName": "Ahmed Ali",
+  "memberId": "<memberId>",
   "amount": 1000,
-  "paymentDate": "2024-02-01T00:00:00.000Z"
+  "paymentDate": "2024-02-01T00:00:00.000Z",
+  "paymentMethod": "Cash",
+  "zakatType": "fitr",
+  "remarks": "Zakat al-Fitr"
+}
+```
+- `zakatType` values: `fitr` | `mal` | `other`
+
+#### PUT /api/collectibles/zakat/:id
+```json
+{
+  "amount": 1200,
+  "remarks": "Updated"
+}
+```
+
+### Wallet
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/collectibles/wallet` | Get tenant wallet | Yes |
+| `GET` | `/api/collectibles/wallet/:walletId/transactions` | Get wallet transactions | Yes |
+
+#### GET /api/collectibles/wallet/:walletId/transactions
+- **Query params (optional):** `page`, `limit`, `startDate`, `endDate`
+
+---
+
+## 14. Employees
+
+All require: `Authorization`, `x-tenant-id`.
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/employees` | List employees | Yes |
+| `GET` | `/api/employees/:id` | Get employee by ID | Yes |
+| `POST` | `/api/employees` | Create employee | Yes |
+| `PUT` | `/api/employees/:id` | Update employee | Yes |
+| `DELETE` | `/api/employees/:id` | Delete employee | Yes |
+
+### POST /api/employees
+```json
+{
+  "instituteId": "<instituteId>",
+  "name": "Mohammed Rashid",
+  "phone": "9876540001",
+  "email": "rashid@example.com",
+  "designation": "Teacher",
+  "joiningDate": "2023-06-01T00:00:00.000Z",
+  "salary": 15000,
+  "status": "active",
+  "address": "Kozhikode",
+  "qualification": "B.Ed"
+}
+```
+- `status` values: `active` | `inactive`
+
+### PUT /api/employees/:id
+```json
+{
+  "designation": "Senior Teacher",
+  "salary": 18000,
+  "status": "active"
 }
 ```
 
 ---
 
-## 15. Social
+## 15. Assets
+
+All require: `Authorization`, `x-tenant-id`.
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/assets` | List assets | Yes |
+| `GET` | `/api/assets/:id` | Get asset by ID | Yes |
+| `POST` | `/api/assets` | Create asset | Yes |
+| `PUT` | `/api/assets/:id` | Update asset | Yes |
+| `DELETE` | `/api/assets/:id` | Delete asset | Yes |
+| `GET` | `/api/assets/:id/maintenance` | Get maintenance records | Yes |
+| `POST` | `/api/assets/:id/maintenance` | Add maintenance record | Yes |
+| `PUT` | `/api/assets/:id/maintenance/:maintenanceId` | Update maintenance record | Yes |
+| `DELETE` | `/api/assets/:id/maintenance/:maintenanceId` | Delete maintenance record | Yes |
+
+### POST /api/assets
+```json
+{
+  "name": "Dell Laptop",
+  "description": "Office laptop for admin use",
+  "purchaseDate": "2023-01-15T00:00:00.000Z",
+  "estimatedValue": 55000,
+  "category": "electronics",
+  "status": "in_use",
+  "location": "Mahallu Office",
+  "serialNumber": "DL-2023-001"
+}
+```
+- `category` values: `furniture` | `electronics` | `vehicle` | `building` | `land` | `equipment` | `other`
+- `status` values: `active` | `in_use` | `under_maintenance` | `disposed` | `damaged`
+
+### PUT /api/assets/:id
+```json
+{
+  "status": "under_maintenance",
+  "location": "IT Department",
+  "estimatedValue": 48000
+}
+```
+
+### POST /api/assets/:id/maintenance
+```json
+{
+  "maintenanceDate": "2024-01-10T00:00:00.000Z",
+  "description": "Annual servicing and battery replacement",
+  "cost": 3500,
+  "performedBy": "Tech Solutions",
+  "nextMaintenanceDate": "2025-01-10T00:00:00.000Z",
+  "status": "completed"
+}
+```
+- `status` values: `scheduled` | `in_progress` | `completed` | `cancelled`
+
+### PUT /api/assets/:id/maintenance/:maintenanceId
+```json
+{
+  "status": "completed",
+  "cost": 4000,
+  "description": "Completed with additional RAM upgrade"
+}
+```
+
+---
+
+## 16. Petty Cash
+
+All require: `Authorization`, `x-tenant-id`.
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/petty-cash` | List petty cash registers | Yes |
+| `GET` | `/api/petty-cash/:id` | Get petty cash by ID | Yes |
+| `POST` | `/api/petty-cash` | Create petty cash register | Yes |
+| `PUT` | `/api/petty-cash/:id` | Update petty cash register | Yes |
+| `GET` | `/api/petty-cash/:id/transactions` | List transactions | Yes |
+| `POST` | `/api/petty-cash/:id/expense` | Record an expense | Yes |
+| `POST` | `/api/petty-cash/:id/replenish` | Replenish petty cash | Yes |
+
+### POST /api/petty-cash
+```json
+{
+  "instituteId": "<instituteId>",
+  "custodianName": "Ahmed Ali",
+  "floatAmount": 5000
+}
+```
+- `floatAmount`: initial cash float (becomes `currentBalance`)
+
+### PUT /api/petty-cash/:id
+```json
+{
+  "custodianName": "Mohammed Rashid",
+  "status": "inactive"
+}
+```
+
+### POST /api/petty-cash/:id/expense
+```json
+{
+  "amount": 350,
+  "description": "Office stationery purchase",
+  "categoryId": "<categoryId>",
+  "receiptNo": "EXP-001",
+  "date": "2024-02-05T00:00:00.000Z"
+}
+```
+
+### POST /api/petty-cash/:id/replenish
+```json
+{
+  "amount": 2000,
+  "description": "Monthly replenishment",
+  "date": "2024-02-01T00:00:00.000Z"
+}
+```
+
+---
+
+## 17. Salary
+
+All require: `Authorization`, `x-tenant-id`.
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/salary` | List salary payments | Yes |
+| `GET` | `/api/salary/summary` | Salary summary | Yes |
+| `GET` | `/api/salary/employee/:employeeId` | Salary history for employee | Yes |
+| `GET` | `/api/salary/:id` | Get salary payment by ID | Yes |
+| `POST` | `/api/salary` | Create salary payment | Yes |
+| `PUT` | `/api/salary/:id` | Update salary payment | Yes |
+| `DELETE` | `/api/salary/:id` | Delete salary payment | Yes |
+
+### POST /api/salary
+```json
+{
+  "employeeId": "<employeeId>",
+  "instituteId": "<instituteId>",
+  "month": 2,
+  "year": 2024,
+  "baseSalary": 15000,
+  "allowances": 2000,
+  "deductions": 500,
+  "paymentDate": "2024-02-28T00:00:00.000Z",
+  "paymentMethod": "bank",
+  "remarks": "February salary"
+}
+```
+- `paymentMethod` values: `cash` | `bank` | `upi` | `cheque`
+- `netAmount` is auto-calculated: `baseSalary + allowances - deductions`
+
+### PUT /api/salary/:id
+```json
+{
+  "baseSalary": 16000,
+  "allowances": 2500,
+  "deductions": 500,
+  "status": "paid",
+  "remarks": "Revised salary for February"
+}
+```
+- `status` values: `paid` | `pending` | `cancelled`
+- `netAmount` is recalculated automatically when salary components change.
+
+### GET /api/salary/summary
+- **Query params (optional):** `month`, `year`, `instituteId`
+
+### GET /api/salary/employee/:employeeId
+- **Response:** Paginated salary history for that employee.
+
+---
+
+## 18. Social
+
+All require: `Authorization`, `x-tenant-id`.
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
@@ -473,181 +941,381 @@ All require: `Authorization`, `x-tenant-id`.
 | `GET` | `/api/social/activity-logs` | Activity logs | Yes |
 | `GET` | `/api/social/support` | List support tickets | Yes |
 | `POST` | `/api/social/support` | Create support ticket | Yes |
-| `PUT` | `/api/social/support/:supportId` | Update support ticket | Yes |
+| `PUT` | `/api/social/support/:id` | Update support ticket | Yes |
 
 ### POST /api/social/banners
-- **Body:**
 ```json
 {
   "title": "Ramadan Mubarak",
-  "image": "https://example.com/banner.jpg"
+  "image": "https://example.com/banner.jpg",
+  "link": "https://example.com",
+  "startDate": "2024-03-01T00:00:00.000Z",
+  "endDate": "2024-04-01T00:00:00.000Z"
 }
 ```
 
 ### POST /api/social/feeds
-- **Body:**
 ```json
 {
-  "title": "Announcement",
-  "content": "Message",
-  "authorId": "<userId>"
+  "title": "Community Announcement",
+  "content": "The mahallu general meeting is scheduled for March 15.",
+  "type": "announcement",
+  "image": "https://example.com/image.jpg"
 }
 ```
 
 ### POST /api/social/support
-- **Body:**
 ```json
 {
   "subject": "Login Issue",
-  "message": "Unable to login"
+  "message": "I am unable to login with my phone number.",
+  "category": "technical"
 }
 ```
 
-### PUT /api/social/support/:supportId
-- **Body:**
+### PUT /api/social/support/:id
 ```json
 {
   "status": "in_progress",
-  "response": "We are checking"
+  "response": "We are investigating the issue."
 }
 ```
+- `status` values: `open` | `in_progress` | `resolved` | `closed`
 
 ---
 
-## 16. Reports
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `GET` | `/api/reports/area` | Area report | Yes |
-| `GET` | `/api/reports/blood-bank` | Blood bank report | Yes |
-| `GET` | `/api/reports/orphans` | Orphans report | Yes |
+## 19. Reports
 
 All require: `Authorization`, `x-tenant-id`.
 
-### Accounting Reports (Balance Details)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/reports/area` | Area-wise member report |
+| `GET` | `/api/reports/blood-bank` | Blood group availability report |
+| `GET` | `/api/reports/orphans` | Orphans report |
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `GET` | `/api/accounting-reports/trial-balance` | Trial balance (debit/credit totals) | Yes |
-| `GET` | `/api/accounting-reports/balance-sheet` | Balance sheet (assets, liabilities, summary) | Yes |
+### GET /api/reports/area
+- **Query params (optional):** `district`, `village`, `lsgName`
 
-### GET /api/accounting-reports/trial-balance
-- **Headers:** `Authorization: Bearer <token>`, `x-tenant-id: <tenantId>`
-- **Query params (optional):**
-  - `instituteId` (string)
-  - `asOfDate` (date in `YYYY-MM-DD`)
-- **Response:** Trial balance with debit and credit columns by ledger.
+### GET /api/reports/blood-bank
+- **Query params (optional):** `bloodGroup` (e.g. `A+ve`, `B-ve`)
 
-### GET /api/accounting-reports/balance-sheet
-- **Headers:** `Authorization: Bearer <token>`, `x-tenant-id: <tenantId>`
-- **Query params (optional):**
-  - `instituteId` (string)
-  - `asOfDate` (date in `YYYY-MM-DD`)
-- **Response:** Balance sheet with assets, liabilities, income, expenses, and summary.
+### GET /api/reports/orphans
+- **Response:** List of members flagged as orphans.
 
 ---
 
-## 17. Notifications
+## 20. Accounting Reports
+
+All require: `Authorization`, `x-tenant-id`.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/accounting-reports/day-book` | Day book (all transactions by date) |
+| `GET` | `/api/accounting-reports/trial-balance` | Trial balance (debit/credit totals) |
+| `GET` | `/api/accounting-reports/balance-sheet` | Balance sheet |
+| `GET` | `/api/accounting-reports/ledger-report` | Ledger-wise transactions |
+| `GET` | `/api/accounting-reports/income-expenditure` | Income & expenditure statement |
+| `GET` | `/api/accounting-reports/consolidated` | Consolidated report across all institutes |
+
+All endpoints accept these **query params (optional):**
+- `instituteId` — filter by institute
+- `asOfDate` — as of date (`YYYY-MM-DD`)
+- `startDate` — period start (`YYYY-MM-DD`)
+- `endDate` — period end (`YYYY-MM-DD`)
+
+### GET /api/accounting-reports/day-book
+- **Response:** Chronological list of all ledger transactions for the period.
+
+### GET /api/accounting-reports/trial-balance
+- **Response:** Debit and credit totals by ledger account.
+
+### GET /api/accounting-reports/balance-sheet
+- **Response:** Assets, liabilities, income, expenses, and net summary.
+
+### GET /api/accounting-reports/ledger-report
+- **Query params:** `ledgerId` (required)
+- **Response:** All transactions for the specified ledger.
+
+### GET /api/accounting-reports/income-expenditure
+- **Response:** Income vs expenditure statement for the period.
+
+### GET /api/accounting-reports/consolidated
+- **Response:** Aggregated financials across all institutes in the tenant.
+
+---
+
+## 21. Notifications
+
+All require: `Authorization`, `x-tenant-id`.
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/notifications` | List notifications | Yes |
-| `POST` | `/api/notifications` | Create notification | Yes |
-| `PUT` | `/api/notifications/:notificationId/read` | Mark as read | Yes |
-| `PUT` | `/api/notifications/read-all` | Mark all as read | Yes |
+| `POST` | `/api/notifications` | Create & send notification | Yes |
+| `PUT` | `/api/notifications/:id/read` | Mark notification as read | Yes |
+| `PUT` | `/api/notifications/read-all` | Mark all notifications as read | Yes |
 
 ### POST /api/notifications
-- **Body:**
 ```json
 {
   "recipientType": "all",
-  "title": "Announcement",
-  "message": "Message",
-  "type": "info"
+  "title": "Important Announcement",
+  "message": "The mahallu office will be closed on Friday.",
+  "type": "info",
+  "image": "https://example.com/notification.jpg"
 }
 ```
+- `recipientType` values: `all` | `members` | `admins` | `specific`
+- For `specific`, also include `"recipientIds": ["<userId>", ...]`
+- `type` values: `info` | `warning` | `success` | `alert`
 
 ---
 
-## 18. Master Accounts
+## 22. Master Accounts
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `GET` | `/api/master-accounts/institute` | List institute accounts | Yes |
-| `POST` | `/api/master-accounts/institute` | Create institute account | Yes |
-| `GET` | `/api/master-accounts/categories` | List categories | Yes |
-| `POST` | `/api/master-accounts/categories` | Create category | Yes |
-| `GET` | `/api/master-accounts/wallets` | List master wallets | Yes |
-| `POST` | `/api/master-accounts/wallets` | Create master wallet | Yes |
-| `GET` | `/api/master-accounts/ledgers` | List ledgers | Yes |
-| `POST` | `/api/master-accounts/ledgers` | Create ledger | Yes |
-| `GET` | `/api/master-accounts/ledger-items` | List ledger items | Yes |
-| `POST` | `/api/master-accounts/ledger-items` | Create ledger item | Yes |
+All require: `Authorization`, `x-tenant-id`.
 
-### POST /api/master-accounts/institute
-- **Body:** `{ "instituteId": "<instituteId>", "accountName": "Main Account" }`
+### Institute Accounts
 
-### POST /api/master-accounts/categories
-- **Body:** `{ "name": "Donations", "type": "income" }`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/master-accounts/institute` | List institute accounts |
+| `POST` | `/api/master-accounts/institute` | Create institute account |
+| `PUT` | `/api/master-accounts/institute/:id` | Update institute account |
+| `DELETE` | `/api/master-accounts/institute/:id` | Delete institute account |
 
-### POST /api/master-accounts/wallets
-- **Body:** `{ "name": "Main Wallet", "type": "main", "balance": 0 }`
+#### POST /api/master-accounts/institute
+```json
+{
+  "instituteId": "<instituteId>",
+  "accountName": "Main Account",
+  "bankName": "SBI",
+  "accountNumber": "123456789",
+  "ifscCode": "SBIN0001234"
+}
+```
 
-### POST /api/master-accounts/ledgers
-- **Body:** `{ "name": "Monthly Income", "type": "income" }`
+#### PUT /api/master-accounts/institute/:id
+```json
+{
+  "accountName": "Updated Account Name",
+  "bankName": "HDFC"
+}
+```
 
-### POST /api/master-accounts/ledger-items
-- **Body:**
+### Categories
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/master-accounts/categories` | List categories |
+| `POST` | `/api/master-accounts/categories` | Create category |
+| `PUT` | `/api/master-accounts/categories/:id` | Update category |
+| `DELETE` | `/api/master-accounts/categories/:id` | Delete category |
+
+#### POST /api/master-accounts/categories
+```json
+{
+  "name": "Donations",
+  "type": "income",
+  "description": "Voluntary donations"
+}
+```
+- `type` values: `income` | `expense`
+
+#### PUT /api/master-accounts/categories/:id
+```json
+{ "name": "Updated Category", "type": "income" }
+```
+
+### Wallets
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/master-accounts/wallets` | List wallets |
+| `POST` | `/api/master-accounts/wallets` | Create wallet |
+| `PUT` | `/api/master-accounts/wallets/:id` | Update wallet |
+| `DELETE` | `/api/master-accounts/wallets/:id` | Delete wallet |
+
+#### POST /api/master-accounts/wallets
+```json
+{
+  "name": "Main Wallet",
+  "type": "main",
+  "balance": 0,
+  "instituteId": "<instituteId>"
+}
+```
+
+#### PUT /api/master-accounts/wallets/:id
+```json
+{ "name": "Updated Wallet", "balance": 5000 }
+```
+
+### Ledgers
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/master-accounts/ledgers` | List ledgers |
+| `POST` | `/api/master-accounts/ledgers` | Create ledger |
+| `PUT` | `/api/master-accounts/ledgers/:id` | Update ledger |
+| `DELETE` | `/api/master-accounts/ledgers/:id` | Delete ledger |
+
+#### POST /api/master-accounts/ledgers
+```json
+{
+  "name": "Monthly Income",
+  "type": "income",
+  "categoryId": "<categoryId>",
+  "instituteId": "<instituteId>",
+  "description": "All monthly income entries"
+}
+```
+- `type` values: `income` | `expense` | `asset` | `liability`
+
+#### PUT /api/master-accounts/ledgers/:id
+```json
+{ "name": "Quarterly Income", "description": "Updated description" }
+```
+
+### Ledger Items
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/master-accounts/ledger-items` | List ledger items |
+| `POST` | `/api/master-accounts/ledger-items` | Create ledger item (transaction) |
+| `PUT` | `/api/master-accounts/ledger-items/:id` | Update ledger item |
+| `DELETE` | `/api/master-accounts/ledger-items/:id` | Delete ledger item |
+
+#### POST /api/master-accounts/ledger-items
 ```json
 {
   "ledgerId": "<ledgerId>",
   "date": "2024-02-01T00:00:00.000Z",
   "amount": 5000,
-  "description": "Monthly donation collection"
+  "type": "credit",
+  "description": "Monthly donation collection",
+  "referenceNo": "TXN-001",
+  "walletId": "<walletId>"
+}
+```
+- `type` values: `credit` | `debit`
+
+#### PUT /api/master-accounts/ledger-items/:id
+```json
+{
+  "amount": 5500,
+  "description": "Revised donation amount",
+  "referenceNo": "TXN-001-REV"
 }
 ```
 
 ---
 
-## 19. Member User
+## 23. Member User
 
-Member-facing endpoints (use `Authorization: Bearer <token>`; `x-tenant-id` typically not required).
+Member-facing portal endpoints. Require `Authorization: Bearer <token>` (member role).
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/member-user/profile` | Get own profile |
+| `GET` | `/api/member-user/overview` | Overview/summary dashboard |
+| `PUT` | `/api/member-user/profile` | Update own profile |
+| `GET` | `/api/member-user/payments` | Get all own payments |
+| `GET` | `/api/member-user/varisangya` | Get own varisangya records |
+| `GET` | `/api/member-user/wallet` | Get own wallet |
+| `GET` | `/api/member-user/wallet/transactions` | Get own wallet transactions |
+| `POST` | `/api/member-user/payments/varisangya` | Request varisangya payment |
+| `POST` | `/api/member-user/payments/zakat` | Request zakat payment |
+| `GET` | `/api/member-user/registrations` | Get own registrations |
+| `POST` | `/api/member-user/registrations/nikah` | Request nikah registration |
+| `POST` | `/api/member-user/registrations/death` | Request death registration |
+| `POST` | `/api/member-user/registrations/noc` | Request NOC |
+| `GET` | `/api/member-user/notifications` | Get own notifications |
+| `GET` | `/api/member-user/programs` | Get community programs |
+| `GET` | `/api/member-user/feeds` | Get public feeds |
+| `GET` | `/api/member-user/family-members` | Get own family members |
+
+### GET /api/member-user/overview
+- **Response:** Member stats — payment status, wallet balance, upcoming programs, recent notifications.
+
+### PUT /api/member-user/profile
+```json
+{
+  "phone": "9876543210",
+  "email": "me@example.com",
+  "address": "Kozhikode"
+}
+```
+
+### POST /api/member-user/payments/varisangya
+```json
+{
+  "amount": 500,
+  "paymentDate": "2024-02-01",
+  "paymentMethod": "Cash"
+}
+```
+
+### POST /api/member-user/payments/zakat
+```json
+{
+  "amount": 1000,
+  "paymentDate": "2024-02-01",
+  "zakatType": "fitr"
+}
+```
+
+### POST /api/member-user/registrations/nikah
+```json
+{
+  "brideName": "Fatima Khan",
+  "brideAddress": "Malappuram",
+  "nikahDate": "2024-02-14",
+  "venue": "Mahallu Mosque"
+}
+```
+
+### POST /api/member-user/registrations/death
+```json
+{
+  "deceasedName": "Ahmed Ali",
+  "deathDate": "2024-02-10",
+  "causeOfDeath": "Natural causes"
+}
+```
+
+### POST /api/member-user/registrations/noc
+```json
+{
+  "purpose": "Travel abroad for employment",
+  "type": "travel",
+  "destination": "UAE"
+}
+```
+
+---
+
+## 24. Upload
+
+Requires: `Authorization`.
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| `GET` | `/api/member-user/profile` | Get own profile | Yes |
-| `PUT` | `/api/member-user/profile` | Update own profile | Yes |
-| `GET` | `/api/member-user/payments` | Get own payments | Yes |
-| `GET` | `/api/member-user/wallet` | Get own wallet | Yes |
-| `GET` | `/api/member-user/wallet/transactions` | Get own wallet transactions | Yes |
-| `POST` | `/api/member-user/payments/varisangya` | Request varisangya payment | Yes |
-| `POST` | `/api/member-user/payments/zakat` | Request zakat payment | Yes |
-| `GET` | `/api/member-user/registrations` | Get own registrations | Yes |
-| `POST` | `/api/member-user/registrations/nikah` | Request nikah registration | Yes |
-| `POST` | `/api/member-user/registrations/death` | Request death registration | Yes |
-| `POST` | `/api/member-user/registrations/noc` | Request NOC | Yes |
-| `GET` | `/api/member-user/notifications` | Get own notifications | Yes |
-| `GET` | `/api/member-user/programs` | Get community programs | Yes |
-| `GET` | `/api/member-user/feeds` | Get public feeds | Yes |
-| `GET` | `/api/member-user/family-members` | Get own family members | Yes |
+| `POST` | `/api/upload/notification-image` | Upload notification image | Yes |
 
-### PUT /api/member-user/profile
-- **Body:** `{ "phone": "9876543210", "email": "me@example.com" }`
-
-### POST /api/member-user/payments/varisangya
-- **Body:** `{ "amount": 500, "paymentDate": "2024-02-01" }`
-
-### POST /api/member-user/payments/zakat
-- **Body:** `{ "amount": 1000, "paymentDate": "2024-02-01" }`
-
-### POST /api/member-user/registrations/nikah
-- **Body:** `{ "brideName": "Fatima Khan", "nikahDate": "2024-02-14" }`
-
-### POST /api/member-user/registrations/death
-- **Body:** `{ "deathDate": "2024-02-10" }`
-
-### POST /api/member-user/registrations/noc
-- **Body:** `{ "purpose": "Travel", "type": "common" }`
+### POST /api/upload/notification-image
+- **Content-Type:** `multipart/form-data`
+- **Body field:** `image` (file)
+- **Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "url": "https://storage.example.com/notifications/image.jpg"
+  }
+}
+```
 
 ---
 
@@ -656,7 +1324,7 @@ Member-facing endpoints (use `Authorization: Bearer <token>`; `x-tenant-id` typi
 | Section | Count |
 |---------|-------|
 | Public | 2 |
-| Auth | 5 |
+| Auth | 7 |
 | Dashboard | 4 |
 | Tenants | 8 |
 | Users | 6 |
@@ -664,18 +1332,23 @@ Member-facing endpoints (use `Authorization: Bearer <token>`; `x-tenant-id` typi
 | Members | 7 |
 | Institutes | 5 |
 | Programs | 5 |
-| Madrasa | 5 |
 | Committees | 6 |
 | Meetings | 5 |
-| Registrations | 10 |
-| Collectibles | 6 |
+| Registrations | 12 |
+| Collectibles | 9 |
+| Employees | 5 |
+| Assets | 9 |
+| Petty Cash | 7 |
+| Salary | 7 |
 | Social | 8 |
-| Reports | 5 |
+| Reports | 3 |
+| Accounting Reports | 6 |
 | Notifications | 4 |
-| Master Accounts | 10 |
-| Member User | 15 |
-| **Total** | **~125** |
+| Master Accounts | 20 |
+| Member User | 17 |
+| Upload | 1 |
+| **Total** | **~177** |
 
 ---
 
-*Generated from Mahallu API Postman Collection (AUTO). For interactive docs, use `GET /api-docs`.*
+*For interactive Swagger docs, run the API and open `GET /api-docs`.*

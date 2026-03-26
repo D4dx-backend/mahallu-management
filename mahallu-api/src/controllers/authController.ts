@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
 import Member from '../models/Member';
+import Family from '../models/Family';
 import OTP from '../models/OTP';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -8,6 +9,9 @@ import { AuthRequest } from '../middleware/authMiddleware';
 import { normalizeIndianPhone, sendWhatsAppMessage } from '../services/dxingService';
 import Tenant from '../models/Tenant';
 import Institute from '../models/Institute';
+
+// App Store Review test account — OTP is always 123456 for this number
+const APP_STORE_TEST_PHONE = '918877665544';
 
 const getPhoneVariants = (input: string): string[] => {
   const variants = new Set<string>();
@@ -194,6 +198,56 @@ export const sendOTP = async (req: Request, res: Response) => {
     }
 
     console.info(`[OTP] send-otp requested for phone=${phone} normalized=${normalizedPhone} env=${process.env.NODE_ENV}`);
+
+    // ─── App Store Review test account ──────────────────────────────────────────
+    // Phone 8877665544 always gets OTP 123456. Test accounts are auto-created on
+    // first use so the seed script is not required.
+    if (normalizedPhone === APP_STORE_TEST_PHONE) {
+      const testLocalPhone = '8877665544';
+      const testVariants = [testLocalPhone, normalizedPhone, `+${normalizedPhone}`];
+      const existingCount = await User.countDocuments({ phone: { $in: testVariants } });
+
+      if (existingCount === 0) {
+        // Find or create a tenant
+        let tenant = await Tenant.findOne({ status: 'active' });
+        if (!tenant) {
+          tenant = await Tenant.create({
+            name: 'App Store Test Mahallu', code: 'TEST001', type: 'standard',
+            location: 'Kerala',
+            address: { state: 'Kerala', district: 'Kozhikode', lsgName: 'Kozhikode Corporation', village: 'Kozhikode' },
+            status: 'active',
+            subscription: { plan: 'standard', startDate: new Date(), isActive: true },
+            settings: { varisangyaAmount: 100, varisangyaGrades: [], educationOptions: [], areaOptions: [], features: {} },
+          });
+        }
+        const tenantId = (tenant as any)._id;
+        const hashedPw = await bcrypt.hash('123456', 10);
+        const fullPerms = { view: true, add: true, edit: true, delete: true };
+
+        // mahall user
+        await User.create({ name: 'Test User (Mahall)', phone: testLocalPhone, role: 'mahall', tenantId, status: 'active', isSuperAdmin: false, permissions: fullPerms, password: hashedPw });
+
+        // institute + institute user
+        let institute = await Institute.findOne({ tenantId, name: 'App Store Test Institute' });
+        if (!institute) institute = await Institute.create({ tenantId, name: 'App Store Test Institute', place: 'Kozhikode', type: 'institute', status: 'active' });
+        await User.create({ name: 'Test User (Institute)', phone: testLocalPhone, role: 'institute', tenantId, instituteId: (institute as any)._id, status: 'active', isSuperAdmin: false, permissions: fullPerms, password: hashedPw });
+
+        // family + member + member user
+        let family = await Family.findOne({ tenantId, houseName: 'App Store Test House' });
+        if (!family) family = await Family.create({ tenantId, houseName: 'App Store Test House', familyHead: 'Test User', status: 'approved' });
+        let member = await Member.findOne({ phone: { $in: testVariants } });
+        if (!member) member = await Member.create({ tenantId, name: 'Test User (Member)', familyId: (family as any)._id, familyName: 'App Store Test House', phone: testLocalPhone, status: 'active' });
+        await User.create({ name: 'Test User (Member)', phone: testLocalPhone, role: 'member', tenantId, memberId: (member as any)._id, status: 'active', isSuperAdmin: false, permissions: fullPerms, password: hashedPw });
+
+        console.info('[OTP] App Store test accounts auto-created');
+      }
+
+      await OTP.updateMany({ phone: normalizedPhone, isUsed: false }, { isUsed: true });
+      await new OTP({ phone: normalizedPhone, code: '123456', expiresAt: new Date(Date.now() + 60 * 60 * 1000) }).save();
+      console.info(`[OTP] App Store test account: fixed OTP issued for ${normalizedPhone}`);
+      return res.json({ success: true, message: 'OTP sent successfully', otp: '123456' });
+    }
+    // ────────────────────────────────────────────────────────────────────────────
 
     const phoneVariants = Array.from(
       new Set([...getPhoneVariants(phone), localPhone, normalizedPhone, `+${normalizedPhone}`])

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "create-test-user": "ts-node src/scripts/createTestUser.ts"
   },
   "keywords": [],
   "author": "",

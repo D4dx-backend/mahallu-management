@@ -3,9 +3,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface INikahRegistration extends Document {
   tenantId: mongoose.Types.ObjectId;
   groomName: string;
+  groomNameMl?: string;
   groomAge?: number;
   groomId?: mongoose.Types.ObjectId; // Member ID
   brideName: string;
+  brideNameMl?: string;
   brideAge?: number;
   brideId?: mongoose.Types.ObjectId; // Member ID
   mahallMemberType?: 'groom' | 'bride';
@@ -26,6 +28,7 @@ export interface INikahRegistration extends Document {
 export interface IDeathRegistration extends Document {
   tenantId: mongoose.Types.ObjectId;
   deceasedName: string;
+  deceasedNameMl?: string;
   deceasedId?: mongoose.Types.ObjectId; // Member ID
   deathDate: Date;
   placeOfDeath?: string;
@@ -44,9 +47,11 @@ export interface IDeathRegistration extends Document {
 export interface INOC extends Document {
   tenantId: mongoose.Types.ObjectId;
   applicantName: string;
-  applicantId?: mongoose.Types.ObjectId; // Member ID
+  applicantNameMl?: string;
+  applicantId?: mongoose.Types.ObjectId;
   applicantPhone?: string;
   purposeTitle?: string;
+  purposeTitleMl?: string;
   purposeDescription?: string;
   purpose?: string;
   type: 'common' | 'nikah';
@@ -69,9 +74,11 @@ const NikahRegistrationSchema = new Schema<INikahRegistration>(
       index: true,
     },
     groomName: { type: String, required: true, trim: true },
+    groomNameMl: { type: String, trim: true },
     groomAge: Number,
     groomId: { type: Schema.Types.ObjectId, ref: 'Member' },
     brideName: { type: String, required: true, trim: true },
+    brideNameMl: { type: String, trim: true },
     brideAge: Number,
     brideId: { type: Schema.Types.ObjectId, ref: 'Member' },
     mahallMemberType: {
@@ -105,6 +112,7 @@ const DeathRegistrationSchema = new Schema<IDeathRegistration>(
       index: true,
     },
     deceasedName: { type: String, required: true, trim: true },
+    deceasedNameMl: { type: String, trim: true },
     deceasedId: { type: Schema.Types.ObjectId, ref: 'Member' },
     deathDate: { type: Date, required: true },
     placeOfDeath: String,
@@ -133,9 +141,11 @@ const NOCSchema = new Schema<INOC>(
       index: true,
     },
     applicantName: { type: String, required: true, trim: true },
+    applicantNameMl: { type: String, trim: true },
     applicantId: { type: Schema.Types.ObjectId, ref: 'Member' },
     applicantPhone: String,
     purposeTitle: { type: String, trim: true },
+    purposeTitleMl: { type: String, trim: true },
     purposeDescription: { type: String },
     purpose: { type: String, trim: true },
     type: {

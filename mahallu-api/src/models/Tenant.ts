@@ -2,10 +2,12 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITenant extends Document {
   name: string;
+  nameMl?: string;
   code: string;
   type: 'standard' | 'premium' | 'enterprise';
   since: Date;
   location: string;
+  locationMl?: string;
   address: {
     state: string;
     district: string;
@@ -45,6 +47,10 @@ const TenantSchema = new Schema<ITenant>(
       required: [true, 'Tenant name is required'],
       trim: true,
     },
+    nameMl: {
+      type: String,
+      trim: true,
+    },
     code: {
       type: String,
       required: [true, 'Tenant code is required'],
@@ -62,6 +68,10 @@ const TenantSchema = new Schema<ITenant>(
       default: Date.now,
     },
     location: {
+      type: String,
+      trim: true,
+    },
+    locationMl: {
       type: String,
       trim: true,
     },

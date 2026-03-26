@@ -27,6 +27,7 @@ const varisangyaSchema = z.object({
   paymentDate: z.string().min(1, 'Payment date is required'),
   paymentMethod: z.string().optional(),
   remarks: z.string().optional(),
+  remarksMl: z.string().optional(),
 });
 
 type VarisangyaFormData = z.infer<typeof varisangyaSchema>;
@@ -189,6 +190,7 @@ export default function CreateVarisangya() {
         paymentDate: data.paymentDate,
         paymentMethod: data.paymentMethod,
         remarks: data.remarks,
+        remarksMl: data.remarksMl,
       };
 
       const payloads = [
@@ -228,6 +230,7 @@ export default function CreateVarisangya() {
         paymentDate: new Date().toISOString().split('T')[0],
         paymentMethod: '',
         remarks: '',
+        remarksMl: '',
       });
     } catch (err: any) {
       setSubmitError(err.response?.data?.message || 'Failed to create varisangya payment. Please try again.');
@@ -362,6 +365,12 @@ export default function CreateVarisangya() {
               {...register('remarks')}
               placeholder="Remarks"
               className="md:col-span-2"
+            />
+            <Input
+              label="Remarks (Malayalam)"
+              {...register('remarksMl')}
+              placeholder="കുറിപ്പ്"
+              className="md:col-span-2 font-malayalam"
             />
           </div>
 

@@ -18,6 +18,7 @@ import { Institute } from '@/types';
 
 const userSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100, 'Name must not exceed 100 characters'),
+  nameMl: z.string().optional(),
   phone: z.string().regex(/^[0-9]{10}$/, 'Phone number must be exactly 10 digits'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   tenantId: z.string().optional(),
@@ -195,6 +196,12 @@ export default function CreateInstituteUser() {
                 error={errors.name?.message}
                 required
                 placeholder="Full Name"
+              />
+              <Input
+                label="Full Name (Malayalam)"
+                {...register('nameMl')}
+                placeholder="പേര്‍"
+                className="font-malayalam"
               />
               <Input
                 label="Phone Number"

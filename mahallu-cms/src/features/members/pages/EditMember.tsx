@@ -21,6 +21,7 @@ import { getTenantId as extractTenantId } from '@/utils/tenantHelper';
 
 const memberSchema = z.object({
   name: z.string().min(1, 'Name is required'),
+  nameMl: z.string().optional(),
   familyId: z.string().min(1, 'Family is required'),
   familyName: z.string().min(1, 'Family Name is required'),
   mahallId: z.string().optional(),
@@ -95,6 +96,7 @@ export default function EditMember() {
       setLoading(true);
       const member = await memberService.getById(id!);
       setValue('name', member.name);
+      setValue('nameMl', member.nameMl || '');
       setValue('familyId', member.familyId);
       setValue('familyName', member.familyName);
       setValue('mahallId', member.mahallId || '');
@@ -257,7 +259,12 @@ export default function EditMember() {
               error={errors.name?.message}
               required
               placeholder="Full Name"
-              className="md:col-span-2"
+            />
+            <Input
+              label="Member Name (Malayalam)"
+              {...register('nameMl')}
+              placeholder="പേര്"
+              className="font-malayalam"
             />
             <Input
               label="Member ID (Auto-generated)"

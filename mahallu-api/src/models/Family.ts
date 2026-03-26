@@ -5,12 +5,16 @@ export interface IFamily extends Document {
   mahallId?: string;
   varisangyaGrade?: string;
   houseName: string;
+  houseNameMl?: string;
   familyHead?: string;
+  familyHeadMl?: string;
   contactNo?: string;
   wardNumber?: string;
   houseNo?: string;
   area?: string;
+  areaMl?: string;
   place?: string;
+  placeMl?: string;
   status: 'approved' | 'unapproved' | 'pending';
   createdAt: Date;
   updatedAt: Date;
@@ -37,7 +41,15 @@ const FamilySchema = new Schema<IFamily>(
       required: [true, 'House Name is required'],
       trim: true,
     },
+    houseNameMl: {
+      type: String,
+      trim: true,
+    },
     familyHead: {
+      type: String,
+      trim: true,
+    },
+    familyHeadMl: {
       type: String,
       trim: true,
     },
@@ -57,7 +69,15 @@ const FamilySchema = new Schema<IFamily>(
       type: String,
       enum: ['Area A', 'Area B', 'Area C', 'Area D'],
     },
+    areaMl: {
+      type: String,
+      trim: true,
+    },
     place: {
+      type: String,
+      trim: true,
+    },
+    placeMl: {
       type: String,
       trim: true,
     },

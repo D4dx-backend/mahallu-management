@@ -23,6 +23,7 @@ export const createVarisangyaValidation = [
   body('paymentMethod').optional().trim(),
   body('receiptNo').optional().trim(),
   body('remarks').optional().trim(),
+  body('remarksMl').optional().trim(),
 ];
 
 export const updateVarisangyaValidation = [
@@ -37,6 +38,7 @@ export const updateVarisangyaValidation = [
     .withMessage('Payment date must be a valid date'),
   body('paymentMethod').optional().trim(),
   body('remarks').optional().trim(),
+  body('remarksMl').optional().trim(),
 ];
 
 // Zakat Validations
@@ -65,6 +67,7 @@ export const createZakatValidation = [
   body('receiptNo').optional().trim(),
   body('category').optional().trim(),
   body('remarks').optional().trim(),
+  body('remarksMl').optional().trim(),
 ];
 
 // Wallet Validations

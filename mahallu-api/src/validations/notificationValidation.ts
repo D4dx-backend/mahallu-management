@@ -14,12 +14,14 @@ export const createNotificationValidation = [
     .withMessage('Notification title is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Notification title must be between 2 and 200 characters'),
+  body('titleMl').optional().trim(),
   body('message')
     .trim()
     .notEmpty()
     .withMessage('Notification message is required')
     .isLength({ min: 1 })
     .withMessage('Notification message is required'),
+  body('messageMl').optional().trim(),
   body('type')
     .optional()
     .isIn(['info', 'warning', 'success', 'error'])

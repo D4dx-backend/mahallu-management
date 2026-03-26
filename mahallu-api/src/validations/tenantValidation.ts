@@ -7,6 +7,7 @@ export const createTenantValidation = [
     .withMessage('Tenant name is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Tenant name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('code')
     .trim()
     .notEmpty()
@@ -19,6 +20,7 @@ export const createTenantValidation = [
     .isIn(['standard', 'premium', 'enterprise'])
     .withMessage('Invalid tenant type'),
   body('location').optional().trim(),
+  body('locationMl').optional().trim(),
   body('address.state')
     .trim()
     .notEmpty()
@@ -50,6 +52,8 @@ export const updateTenantValidation = [
     .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Tenant name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
+  body('locationMl').optional().trim(),
   body('status')
     .optional()
     .isIn(['active', 'suspended', 'inactive'])

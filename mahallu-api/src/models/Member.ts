@@ -4,6 +4,7 @@ export interface IMember extends Document {
   tenantId: mongoose.Types.ObjectId; // Required for multi-tenancy
   mahallId?: string;
   name: string;
+  nameMl?: string;
   familyId: mongoose.Types.ObjectId;
   familyName: string;
   age?: number;
@@ -36,6 +37,10 @@ const MemberSchema = new Schema<IMember>(
     name: {
       type: String,
       required: [true, 'Name is required'],
+      trim: true,
+    },
+    nameMl: {
+      type: String,
       trim: true,
     },
     familyId: {

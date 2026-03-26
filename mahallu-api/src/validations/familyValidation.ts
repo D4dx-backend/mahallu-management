@@ -7,12 +7,14 @@ export const createFamilyValidation = [
     .withMessage('House Name is required')
     .isLength({ min: 1, max: 200 })
     .withMessage('House Name must be between 1 and 200 characters'),
+  body('houseNameMl').optional().trim(),
   body('mahallId').optional().trim(),
   body('varisangyaGrade')
     .optional()
     .isIn(['Grade A', 'Grade B', 'Grade C', 'Grade D'])
     .withMessage('Invalid varisangya grade'),
   body('familyHead').optional().trim(),
+  body('familyHeadMl').optional().trim(),
   body('contactNo').optional().trim(),
   body('wardNumber').optional().trim(),
   body('houseNo').optional().trim(),
@@ -20,7 +22,9 @@ export const createFamilyValidation = [
     .optional()
     .isIn(['Area A', 'Area B', 'Area C', 'Area D'])
     .withMessage('Invalid area'),
+  body('areaMl').optional().trim(),
   body('place').optional().trim(),
+  body('placeMl').optional().trim(),
   body('status')
     .optional()
     .isIn(['approved', 'unapproved', 'pending'])
@@ -34,6 +38,7 @@ export const updateFamilyValidation = [
     .trim()
     .isLength({ min: 1, max: 200 })
     .withMessage('House Name must be between 1 and 200 characters'),
+  body('houseNameMl').optional().trim(),
   body('varisangyaGrade')
     .optional()
     .isIn(['Grade A', 'Grade B', 'Grade C', 'Grade D'])

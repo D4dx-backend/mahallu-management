@@ -5,7 +5,9 @@ export interface INotification extends Document {
   recipientId?: mongoose.Types.ObjectId; // User or Member ID
   recipientType: 'user' | 'member' | 'all';
   title: string;
+  titleMl?: string;
   message: string;
+  messageMl?: string;
   type: 'info' | 'warning' | 'success' | 'error';
   isRead: boolean;
   link?: string;
@@ -29,7 +31,9 @@ const NotificationSchema = new Schema<INotification>(
       default: 'all',
     },
     title: { type: String, required: true, trim: true },
+    titleMl: { type: String, trim: true },
     message: { type: String, required: true },
+    messageMl: { type: String },
     type: {
       type: String,
       enum: ['info', 'warning', 'success', 'error'],

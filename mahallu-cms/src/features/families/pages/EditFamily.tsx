@@ -21,7 +21,9 @@ const familySchema = z.object({
   mahallId: z.string().optional(),
   varisangyaGrade: z.string().optional(),
   houseName: z.string().min(1, 'House Name is required'),
+  houseNameMl: z.string().optional(),
   familyHead: z.string().optional(),
+  familyHeadMl: z.string().optional(),
   contactNo: z.string().optional().refine(
     (val) => !val || /^\d{10}$/.test(val),
     { message: 'Contact number must be exactly 10 digits' }
@@ -32,7 +34,9 @@ const familySchema = z.object({
   ),
   houseNo: z.string().optional(),
   area: z.string().optional(),
+  areaMl: z.string().optional(),
   place: z.string().optional(),
+  placeMl: z.string().optional(),
   status: z.enum(['approved', 'unapproved', 'pending']).optional(),
 });
 
@@ -87,12 +91,16 @@ export default function EditFamily() {
       setValue('mahallId', family.mahallId || '');
       setValue('varisangyaGrade', family.varisangyaGrade || '');
       setValue('houseName', family.houseName);
+      setValue('houseNameMl', family.houseNameMl || '');
       setValue('familyHead', family.familyHead || '');
+      setValue('familyHeadMl', family.familyHeadMl || '');
       setValue('contactNo', family.contactNo || '');
       setValue('wardNumber', family.wardNumber || '');
       setValue('houseNo', family.houseNo || '');
       setValue('area', family.area || '');
+      setValue('areaMl', family.areaMl || '');
       setValue('place', family.place || '');
+      setValue('placeMl', family.placeMl || '');
       setValue('status', family.status || 'pending');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load family');
@@ -187,13 +195,21 @@ export default function EditFamily() {
               error={errors.houseName?.message}
               required
               placeholder="House Name"
-              className="md:col-span-2"
             />
+            <Input
+              label="House Name (Malayalam)"
+              {...register('houseNameMl')}
+              placeholder="വീട് പേര്"              className="font-malayalam"            />
             <Input
               label="Family Head"
               {...register('familyHead')}
               placeholder="Family Head Name"
-              className="md:col-span-2"
+            />
+            <Input
+              label="Family Head (Malayalam)"
+              {...register('familyHeadMl')}
+              placeholder="കുടുംബ നാഥൻ"
+              className="font-malayalam"
             />
             <Input
               label="Contact No."
@@ -221,9 +237,21 @@ export default function EditFamily() {
               {...register('area')}
             />
             <Input
+              label="Area (Malayalam)"
+              {...register('areaMl')}
+              placeholder="പ്രദേശം"
+              className="font-malayalam"
+            />
+            <Input
               label="Place"
               {...register('place')}
               placeholder="Place"
+            />
+            <Input
+              label="Place (Malayalam)"
+              {...register('placeMl')}
+              placeholder="സ്ഥലം"
+              className="font-malayalam"
             />
             <Select
               label="Status"

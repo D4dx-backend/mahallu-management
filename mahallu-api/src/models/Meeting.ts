@@ -4,11 +4,13 @@ export interface IMeeting extends Document {
   tenantId: mongoose.Types.ObjectId;
   committeeId: mongoose.Types.ObjectId;
   title: string;
+  titleMl?: string;
   meetingDate: Date;
   attendance: mongoose.Types.ObjectId[];
   totalMembers: number;
   attendancePercent: number;
   agenda?: string;
+  agendaMl?: string;
   minutes?: string;
   status: 'scheduled' | 'completed' | 'cancelled';
   createdAt: Date;
@@ -33,6 +35,10 @@ const MeetingSchema = new Schema<IMeeting>(
       required: [true, 'Meeting title is required'],
       trim: true,
     },
+    titleMl: {
+      type: String,
+      trim: true,
+    },
     meetingDate: {
       type: Date,
       required: [true, 'Meeting date is required'],
@@ -50,6 +56,10 @@ const MeetingSchema = new Schema<IMeeting>(
       default: 0,
     },
     agenda: {
+      type: String,
+      trim: true,
+    },
+    agendaMl: {
       type: String,
       trim: true,
     },

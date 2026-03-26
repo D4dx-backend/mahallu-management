@@ -167,6 +167,68 @@ router.post('/verify-otp', verifyOTPValidation, validationHandler, verifyOtpRate
 
 /**
  * @swagger
+ * /auth/select-account:
+ *   post:
+ *     summary: Select account role after multi-role OTP login
+ *     tags: [Authentication]
+ *     description: |
+ *       When a phone number is linked to multiple roles in the same mahallu,
+ *       `verify-otp` returns `requiresRoleSelection: true` with a short-lived
+ *       `preAuthToken` and an `accounts` list. The client must call this endpoint
+ *       with the chosen `userId` and the `preAuthToken` to receive a full session JWT.
+ *
+ *       The `preAuthToken` expires in **5 minutes**.
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - preAuthToken
+ *               - userId
+ *             properties:
+ *               preAuthToken:
+ *                 type: string
+ *                 description: Short-lived JWT returned by verify-otp when multiple accounts exist
+ *                 example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+ *               userId:
+ *                 type: string
+ *                 description: The _id of the user account the person wants to log in as
+ *                 example: '6997f318f8c021897f8de3ca'
+ *     responses:
+ *       200:
+ *         description: Account selected, session JWT issued
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     token:
+ *                       type: string
+ *                       description: 7-day session JWT
+ *                       example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+ *       400:
+ *         description: preAuthToken and userId are required
+ *       401:
+ *         description: Invalid or expired preAuthToken, or userId does not match the token phone
+ *       403:
+ *         description: Selected account is inactive
+ *       404:
+ *         description: User account not found
+ */
+
+/**
+ * @swagger
  * /auth/me:
  *   get:
  *     summary: Get current authenticated user

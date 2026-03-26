@@ -39,6 +39,7 @@ export const createCategoryValidation = [
     .withMessage('Category name is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Category name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('description').optional().trim(),
   body('type')
     .isIn(['income', 'expense'])
@@ -70,6 +71,7 @@ export const createLedgerValidation = [
     .withMessage('Ledger name is required')
     .isLength({ min: 2, max: 200 })
     .withMessage('Ledger name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('description').optional().trim(),
   body('type')
     .isIn(['income', 'expense'])
@@ -126,6 +128,7 @@ export const updateInstituteAccountValidation = [
 export const updateCategoryValidation = [
   ...idParamValidation,
   body('name').optional().trim().isLength({ min: 2, max: 200 }).withMessage('Category name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('description').optional().trim(),
   body('type').optional().isIn(['income', 'expense']).withMessage('Invalid category type'),
 ];
@@ -140,6 +143,7 @@ export const updateWalletValidation = [
 export const updateLedgerValidation = [
   ...idParamValidation,
   body('name').optional().trim().isLength({ min: 2, max: 200 }).withMessage('Ledger name must be between 2 and 200 characters'),
+  body('nameMl').optional().trim(),
   body('description').optional().trim(),
   body('type').optional().isIn(['income', 'expense']).withMessage('Invalid ledger type'),
 ];
