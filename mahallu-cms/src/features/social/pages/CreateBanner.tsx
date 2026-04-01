@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { FiSave, FiX } from 'react-icons/fi';
+import { FiSave, FiUpload, FiX } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -14,7 +14,7 @@ import { socialService } from '@/services/socialService';
 
 const bannerSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters').max(200, 'Title must be at most 200 characters'),
-  image: z.string().min(1, 'Image URL is required'),
+  image: z.string().optional(),
   link: z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
   startDate: z.string().optional(),
@@ -23,12 +23,21 @@ const bannerSchema = z.object({
 
 type BannerFormData = z.infer<typeof bannerSchema>;
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 export default function CreateBanner() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<BannerFormData>({
     resolver: zodResolver(bannerSchema),
@@ -37,12 +46,86 @@ export default function CreateBanner() {
     },
   });
 
+  const imageUrl = watch('image');
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) {
+      setImageFile(null);
+      setImagePreview(null);
+      return;
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setError('Only JPEG, PNG, WebP, and GIF images are allowed.');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError('Image size must be 5 MB or smaller.');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    setError(null);
+
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+
+    setImageFile(file);
+    setValue('image', '', { shouldValidate: true });
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeSelectedImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const onSubmit = async (data: BannerFormData) => {
     try {
       setError(null);
+
+      const manualImageUrl = data.image?.trim();
+      if (!manualImageUrl && !imageFile) {
+        setError('Please provide an image URL or upload an image file.');
+        return;
+      }
+
+      let bannerImage = manualImageUrl;
+      if (imageFile) {
+        setIsUploadingImage(true);
+        bannerImage = await socialService.uploadBannerImage(imageFile);
+      }
+
+      if (!bannerImage) {
+        setError('Failed to determine banner image. Please try again.');
+        return;
+      }
+
       const bannerData: any = {
         title: data.title,
-        image: data.image,
+        image: bannerImage,
         status: data.status || 'active',
       };
 
@@ -52,9 +135,11 @@ export default function CreateBanner() {
 
       await socialService.createBanner(bannerData);
       navigate(ROUTES.SOCIAL.BANNERS);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create banner. Please try again.');
-      console.error('Error creating banner:', err);
+    } catch (err: unknown) {
+      const apiMessage = (err as any)?.response?.data?.message;
+      setError(apiMessage || 'Failed to create banner. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -95,10 +180,51 @@ export default function CreateBanner() {
               label="Image URL"
               {...register('image')}
               error={errors.image?.message}
-              required
-              placeholder="https://example.com/banner.jpg"
+              placeholder="https://example.com/banner.jpg (optional if file is uploaded)"
               className="md:col-span-2"
             />
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Upload From PC <span className="text-gray-400 text-xs font-normal">(optional)</span>
+              </label>
+
+              {imagePreview ? (
+                <div className="relative inline-block">
+                  <img
+                    src={imagePreview}
+                    alt="Selected banner preview"
+                    className="h-40 w-auto max-w-full rounded-lg object-cover border border-gray-200 dark:border-gray-700"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeSelectedImage}
+                    className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors"
+                    aria-label="Remove selected image"
+                  >
+                    <FiX className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 transition-colors bg-gray-50 dark:bg-gray-800/50">
+                  <FiUpload className="h-8 w-8 text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Click to choose image from your computer</span>
+                  <span className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP or GIF · max 5 MB</span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleImageChange}
+                    className="sr-only"
+                  />
+                </label>
+              )}
+
+              {imageUrl && !imageFile && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Using image URL from the field above.</p>
+              )}
+            </div>
+
             <Input
               label="Link"
               {...register('link')}
@@ -131,9 +257,9 @@ export default function CreateBanner() {
               <FiX className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            <Button type="submit" isLoading={isSubmitting}>
+            <Button type="submit" isLoading={isSubmitting || isUploadingImage}>
               <FiSave className="h-4 w-4 mr-2" />
-              Create Banner
+              {isUploadingImage ? 'Uploading Image...' : 'Create Banner'}
             </Button>
           </div>
         </Card>
