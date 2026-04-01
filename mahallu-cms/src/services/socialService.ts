@@ -74,6 +74,21 @@ export const socialService = {
     return response.data.data;
   },
 
+  getBannerById: async (id: string) => {
+    const response = await api.get<{ success: boolean; data: Banner }>(`/social/banners/${id}`);
+    return response.data.data;
+  },
+
+  updateBanner: async (id: string, data: Partial<Banner>) => {
+    const response = await api.put<{ success: boolean; data: Banner }>(`/social/banners/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteBanner: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/social/banners/${id}`);
+    return response.data;
+  },
+
   uploadBannerImage: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('image', file);

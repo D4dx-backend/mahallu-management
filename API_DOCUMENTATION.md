@@ -1039,6 +1039,9 @@ All require: `Authorization`, `x-tenant-id`.
 |--------|----------|-------------|------|
 | `GET` | `/api/social/banners` | List banners | Yes |
 | `POST` | `/api/social/banners` | Create banner | Yes |
+| `GET` | `/api/social/banners/:id` | Get banner by ID | Yes |
+| `PUT` | `/api/social/banners/:id` | Update banner | Yes |
+| `DELETE` | `/api/social/banners/:id` | Delete banner | Yes |
 | `GET` | `/api/social/feeds` | List feeds | Yes |
 | `POST` | `/api/social/feeds` | Create feed | Yes |
 | `GET` | `/api/social/activity-logs` | Activity logs | Yes |
@@ -1054,6 +1057,30 @@ All require: `Authorization`, `x-tenant-id`.
   "link": "https://example.com",
   "startDate": "2024-03-01T00:00:00.000Z",
   "endDate": "2024-04-01T00:00:00.000Z"
+}
+```
+
+### GET /api/social/banners/:id
+- **Response:** Banner details by ID.
+
+### PUT /api/social/banners/:id
+```json
+{
+  "title": "Ramadan Mubarak Updated",
+  "image": "https://example.com/new-banner.jpg",
+  "link": "https://example.com/ramadan-2026",
+  "status": "active",
+  "startDate": "2026-03-01T00:00:00.000Z",
+  "endDate": "2026-04-01T00:00:00.000Z"
+}
+```
+
+### DELETE /api/social/banners/:id
+- **Response:**
+```json
+{
+  "success": true,
+  "message": "Banner deleted successfully"
 }
 ```
 
@@ -1406,6 +1433,7 @@ Requires: `Authorization`.
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `POST` | `/api/upload/notification-image` | Upload notification image | Yes |
+| `POST` | `/api/upload/banner-image` | Upload banner image | Yes |
 
 ### POST /api/upload/notification-image
 - **Content-Type:** `multipart/form-data`
@@ -1414,9 +1442,18 @@ Requires: `Authorization`.
 ```json
 {
   "success": true,
-  "data": {
-    "url": "https://storage.example.com/notifications/image.jpg"
-  }
+  "url": "https://storage.example.com/uploads/notifications/image.jpg"
+}
+```
+
+### POST /api/upload/banner-image
+- **Content-Type:** `multipart/form-data`
+- **Body field:** `image` (file)
+- **Response:**
+```json
+{
+  "success": true,
+  "url": "https://storage.example.com/uploads/banners/image.jpg"
 }
 ```
 
@@ -1553,14 +1590,14 @@ curl -X GET "http://localhost:5000/api/salary-payments?month=2&year=2024" \
 | Assets | 9 |
 | Petty Cash | 7 |
 | Salary | 7 |
-| Social | 8 |
+| Social | 11 |
 | Reports | 3 |
 | Accounting Reports | 6 |
 | Notifications | 4 |
 | Master Accounts | 20 |
 | Member User | 17 |
-| Upload | 1 |
-| **Total** | **~177** |
+| Upload | 2 |
+| **Total** | **~181** |
 
 ---
 

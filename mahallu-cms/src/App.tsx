@@ -72,6 +72,7 @@ import BloodBankReport from './features/reports/pages/BloodBankReport';
 import OrphansReport from './features/reports/pages/OrphansReport';
 import BannersList from './features/social/pages/BannersList';
 import CreateBanner from './features/social/pages/CreateBanner';
+import EditBanner from './features/social/pages/EditBanner';
 import FeedsList from './features/social/pages/FeedsList';
 import ActivityLogsList from './features/social/pages/ActivityLogsList';
 import SupportList from './features/social/pages/SupportList';
@@ -1012,6 +1013,16 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <CreateBanner />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.SOCIAL.EDIT_BANNER}
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <EditBanner />
               </MainLayout>
             </ProtectedRoute>
           }

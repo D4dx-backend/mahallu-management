@@ -2,6 +2,9 @@ import express from 'express';
 import {
   getAllBanners,
   createBanner,
+  getBannerById,
+  updateBanner,
+  deleteBanner,
   getAllFeeds,
   createFeed,
   getActivityLogs,
@@ -13,7 +16,9 @@ import { authMiddleware } from '../middleware/authMiddleware';
 import { tenantMiddleware, tenantFilter } from '../middleware/tenantMiddleware';
 import { validationHandler } from '../middleware/validationHandler';
 import {
+  bannerIdParamValidation,
   createBannerValidation,
+  updateBannerValidation,
   createFeedValidation,
   createSupportValidation,
   updateSupportValidation,
@@ -82,6 +87,7 @@ router.use(tenantFilter);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/banners', getAllBanners);
+router.get('/banners/:id', bannerIdParamValidation, validationHandler, getBannerById);
 
 /**
  * @swagger
@@ -134,6 +140,8 @@ router.get('/banners', getAllBanners);
  *         $ref: '#/components/responses/Unauthorized'
  */
 router.post('/banners', createBannerValidation, validationHandler, createBanner);
+router.put('/banners/:id', updateBannerValidation, validationHandler, updateBanner);
+router.delete('/banners/:id', bannerIdParamValidation, validationHandler, deleteBanner);
 
 /**
  * @swagger

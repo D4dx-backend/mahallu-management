@@ -122,6 +122,7 @@ export const ROUTES = {
   SOCIAL: {
     BANNERS: '/social/banners',
     CREATE_BANNER: '/social/banners/create',
+    EDIT_BANNER: '/social/banners/:id/edit',
     FEEDS: '/social/feeds',
     SUPER_FEEDS: '/social/super-feeds',
     ACTIVITY_LOGS: '/social/activity-logs',
