@@ -27,6 +27,37 @@ export const createBannerValidation = [
     .withMessage('End date must be a valid date'),
 ];
 
+export const updateBannerValidation = [
+  param('id').isMongoId().withMessage('Invalid banner ID'),
+  body('title')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 200 })
+    .withMessage('Banner title must be between 2 and 200 characters'),
+  body('image')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Banner image cannot be empty'),
+  body('link').optional().trim(),
+  body('status')
+    .optional()
+    .isIn(['active', 'inactive'])
+    .withMessage('Invalid status'),
+  body('startDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Start date must be a valid date'),
+  body('endDate')
+    .optional()
+    .isISO8601()
+    .withMessage('End date must be a valid date'),
+];
+
+export const bannerIdParamValidation = [
+  param('id').isMongoId().withMessage('Invalid banner ID'),
+];
+
 // Feed Validations
 export const createFeedValidation = [
   body('title')

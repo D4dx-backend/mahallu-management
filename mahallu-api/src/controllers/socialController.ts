@@ -53,6 +53,76 @@ export const createBanner = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getBannerById = async (req: AuthRequest, res: Response) => {
+  try {
+    const query: any = { _id: req.params.id };
+
+    if (req.tenantId) {
+      query.tenantId = req.tenantId;
+    }
+
+    const banner = await Banner.findOne(query);
+    if (!banner) {
+      return res.status(404).json({ success: false, message: 'Banner not found' });
+    }
+
+    res.json({ success: true, data: banner });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateBanner = async (req: AuthRequest, res: Response) => {
+  try {
+    const allowedFields = ['title', 'image', 'link', 'status', 'startDate', 'endDate'];
+    const updateData = Object.keys(req.body)
+      .filter((key) => allowedFields.includes(key))
+      .reduce((acc: Record<string, unknown>, key) => {
+        acc[key] = req.body[key];
+        return acc;
+      }, {});
+
+    const query: any = { _id: req.params.id };
+
+    if (req.tenantId) {
+      query.tenantId = req.tenantId;
+    }
+
+    const banner = await Banner.findOneAndUpdate(query, updateData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!banner) {
+      return res.status(404).json({ success: false, message: 'Banner not found' });
+    }
+
+    res.json({ success: true, data: banner });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteBanner = async (req: AuthRequest, res: Response) => {
+  try {
+    const query: any = { _id: req.params.id };
+
+    if (req.tenantId) {
+      query.tenantId = req.tenantId;
+    }
+
+    const banner = await Banner.findOneAndDelete(query);
+
+    if (!banner) {
+      return res.status(404).json({ success: false, message: 'Banner not found' });
+    }
+
+    res.json({ success: true, message: 'Banner deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Feeds
 export const getAllFeeds = async (req: AuthRequest, res: Response) => {
   try {

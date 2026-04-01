@@ -74,6 +74,42 @@ export const socialService = {
     return response.data.data;
   },
 
+  getBannerById: async (id: string) => {
+    const response = await api.get<{ success: boolean; data: Banner }>(`/social/banners/${id}`);
+    return response.data.data;
+  },
+
+  updateBanner: async (id: string, data: Partial<Banner>) => {
+    const response = await api.put<{ success: boolean; data: Banner }>(`/social/banners/${id}`, data);
+    return response.data.data;
+  },
+
+  deleteBanner: async (id: string) => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/social/banners/${id}`);
+    return response.data;
+  },
+
+  uploadBannerImage: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await api.post<{ success: boolean; url: string }>('/upload/banner-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data.url;
+    } catch (error: any) {
+      // Backward compatibility for API instances that only expose notification image upload.
+      if (error?.response?.status === 404) {
+        const fallbackResponse = await api.post<{ success: boolean; url: string }>('/upload/notification-image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return fallbackResponse.data.url;
+      }
+      throw error;
+    }
+  },
+
   // Feeds
   getAllFeeds: async (params?: { status?: string; isSuperFeed?: boolean; page?: number; limit?: number }) => {
     const response = await api.get<{ success: boolean; data: Feed[]; pagination?: any }>('/social/feeds', { params });

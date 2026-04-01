@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiTrash2, FiImage, FiCheckCircle } from 'react-icons/fi';
+import { FiTrash2, FiImage, FiCheckCircle, FiEdit2 } from 'react-icons/fi';
 import Breadcrumb from '@/components/layout/Breadcrumb';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -93,13 +93,13 @@ export default function BannersList() {
     if (!selectedBanner) return;
     try {
       setDeleting(true);
-      // Add delete service call here when available
-      // await socialService.deleteBanner(selectedBanner.id);
+      await socialService.deleteBanner(selectedBanner.id);
       await fetchBanners();
       setShowDeleteModal(false);
       setSelectedBanner(null);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to delete banner');
+    } finally {
       setDeleting(false);
     }
   };
@@ -132,6 +132,14 @@ export default function BannersList() {
       label: 'Actions',
       render: (_, row) => (
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <Link
+            to={`/social/banners/${row.id}/edit`}
+            className="p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-colors"
+            title="Edit"
+          >
+            <FiEdit2 className="h-4 w-4" />
+          </Link>
+
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -230,6 +238,7 @@ export default function BannersList() {
         onClose={() => {
           setShowDeleteModal(false);
           setSelectedBanner(null);
+          setDeleting(false);
         }}
         title="Delete Banner"
         footer={
@@ -239,6 +248,7 @@ export default function BannersList() {
               onClick={() => {
                 setShowDeleteModal(false);
                 setSelectedBanner(null);
+                setDeleting(false);
               }}
             >
               Cancel

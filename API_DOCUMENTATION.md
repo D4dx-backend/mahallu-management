@@ -8,6 +8,84 @@ Base URL: `http://localhost:5000` (or your deployed URL)
 - `Authorization: Bearer <token>`
 - `x-tenant-id: <tenantId>` (where tenant context is required)
 
+## Authentication & Authorization
+
+- **Auth mechanism:** JWT Bearer tokens (`Authorization: Bearer <token>`).
+- **Token issuance:**
+  - Password login: `POST /api/auth/login` (non-member roles).
+  - OTP login: `POST /api/auth/verify-otp` (member + multi-role aware).
+  - Multi-role handoff: `POST /api/auth/select-account` using `preAuthToken` (expires in 5 minutes).
+- **Tenant context:** `x-tenant-id` can be provided, especially for super admin tenant-scoped access.
+- **Institute context (optional):** `x-institute-id` is supported for super admin / mahall role filtering where applicable.
+- **Role protection:**
+  - `superAdminOnly` middleware on super-admin resources.
+  - `allowRoles([...])` middleware on role-scoped endpoints.
+  - `memberUserOnly` middleware on member portal routes.
+
+## Standard Response Envelope
+
+### Success Example
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "Optional success message"
+}
+```
+
+### Error Example
+```json
+{
+  "success": false,
+  "message": "Human-readable error message",
+  "errors": [
+    {
+      "msg": "Validation message",
+      "path": "fieldName",
+      "location": "body"
+    }
+  ]
+}
+```
+
+## Status Code Conventions
+
+| Status | Meaning |
+|--------|---------|
+| `200` | Success |
+| `201` | Resource created |
+| `400` | Validation or malformed request |
+| `401` | Authentication failed / invalid token / invalid OTP |
+| `403` | Authenticated but forbidden (inactive/role mismatch) |
+| `404` | Resource not found |
+| `409` | Conflict (duplicate/uniqueness issues where implemented) |
+| `429` | Rate limited |
+| `500` | Internal server error |
+
+## CRUD Quick Matrix
+
+| Resource | Create | Read (List/Single) | Update | Delete |
+|----------|--------|--------------------|--------|--------|
+| Tenants | ✅ | ✅ | ✅ | ✅ |
+| Users | ✅ | ✅ | ✅ | ✅ |
+| Families | ✅ | ✅ | ✅ | ✅ |
+| Members | ✅ | ✅ | ✅ | ✅ |
+| Institutes | ✅ | ✅ | ✅ | ✅ |
+| Programs | ✅ | ✅ | ✅ | ✅ |
+| Committees | ✅ | ✅ | ✅ | ✅ |
+| Meetings | ✅ | ✅ | ✅ | ✅ |
+| Registrations (Nikah/Death/NOC) | ✅ | ✅ | ✅ | ❌ |
+| Collectibles (Varisangya/Zakat) | ✅ | ✅ | ✅ | ✅ |
+| Employees | ✅ | ✅ | ✅ | ✅ |
+| Assets (+ maintenance) | ✅ | ✅ | ✅ | ✅ |
+| Petty Cash | ✅ | ✅ | ✅ | ❌ |
+| Salary Payments | ✅ | ✅ | ✅ | ✅ |
+| Social | ✅ | ✅ | ✅ (support status) | ❌ |
+| Notifications | ✅ | ✅ | ✅ (read/read-all) | ❌ |
+| Master Accounts | ✅ | ✅ | ✅ | ✅ |
+| Member User | Request/Action APIs | ✅ | ✅ (profile) | ❌ |
+| Upload | ✅ | ❌ | ❌ | ❌ |
+
 ---
 
 ## Table of Contents
@@ -105,6 +183,31 @@ Base URL: `http://localhost:5000` (or your deployed URL)
 ```
 - `otp` field is only returned in **development** mode.
 - **Errors:** `400` validation, `403` inactive, `404` user not found, `429` rate limited (max 1/min)
+
+#### Special Behavior: App Store Test User Auto-Provisioning (New)
+
+There is **no separate endpoint** for test-user creation. The logic is built into `POST /api/auth/send-otp`.
+
+- If phone is `8877665544` (normalized as `918877665544`):
+  - System auto-creates test tenant + 3 role accounts (mahall, institute, member) on first request.
+  - OTP is fixed to `123456`.
+  - This allows deterministic review/testing without running a separate seed script.
+
+**Test Request:**
+```json
+{
+  "phone": "8877665544"
+}
+```
+
+**Test Response (200):**
+```json
+{
+  "success": true,
+  "message": "OTP sent successfully",
+  "otp": "123456"
+}
+```
 
 ### POST /api/auth/verify-otp
 - **Body:**
@@ -881,15 +984,15 @@ All require: `Authorization`, `x-tenant-id`.
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| `GET` | `/api/salary` | List salary payments | Yes |
-| `GET` | `/api/salary/summary` | Salary summary | Yes |
-| `GET` | `/api/salary/employee/:employeeId` | Salary history for employee | Yes |
-| `GET` | `/api/salary/:id` | Get salary payment by ID | Yes |
-| `POST` | `/api/salary` | Create salary payment | Yes |
-| `PUT` | `/api/salary/:id` | Update salary payment | Yes |
-| `DELETE` | `/api/salary/:id` | Delete salary payment | Yes |
+| `GET` | `/api/salary-payments` | List salary payments | Yes |
+| `GET` | `/api/salary-payments/summary` | Salary summary | Yes |
+| `GET` | `/api/salary-payments/employee/:employeeId` | Salary history for employee | Yes |
+| `GET` | `/api/salary-payments/:id` | Get salary payment by ID | Yes |
+| `POST` | `/api/salary-payments` | Create salary payment | Yes |
+| `PUT` | `/api/salary-payments/:id` | Update salary payment | Yes |
+| `DELETE` | `/api/salary-payments/:id` | Delete salary payment | Yes |
 
-### POST /api/salary
+### POST /api/salary-payments
 ```json
 {
   "employeeId": "<employeeId>",
@@ -907,7 +1010,7 @@ All require: `Authorization`, `x-tenant-id`.
 - `paymentMethod` values: `cash` | `bank` | `upi` | `cheque`
 - `netAmount` is auto-calculated: `baseSalary + allowances - deductions`
 
-### PUT /api/salary/:id
+### PUT /api/salary-payments/:id
 ```json
 {
   "baseSalary": 16000,
@@ -920,10 +1023,10 @@ All require: `Authorization`, `x-tenant-id`.
 - `status` values: `paid` | `pending` | `cancelled`
 - `netAmount` is recalculated automatically when salary components change.
 
-### GET /api/salary/summary
+### GET /api/salary-payments/summary
 - **Query params (optional):** `month`, `year`, `instituteId`
 
-### GET /api/salary/employee/:employeeId
+### GET /api/salary-payments/employee/:employeeId
 - **Response:** Paginated salary history for that employee.
 
 ---
@@ -936,6 +1039,9 @@ All require: `Authorization`, `x-tenant-id`.
 |--------|----------|-------------|------|
 | `GET` | `/api/social/banners` | List banners | Yes |
 | `POST` | `/api/social/banners` | Create banner | Yes |
+| `GET` | `/api/social/banners/:id` | Get banner by ID | Yes |
+| `PUT` | `/api/social/banners/:id` | Update banner | Yes |
+| `DELETE` | `/api/social/banners/:id` | Delete banner | Yes |
 | `GET` | `/api/social/feeds` | List feeds | Yes |
 | `POST` | `/api/social/feeds` | Create feed | Yes |
 | `GET` | `/api/social/activity-logs` | Activity logs | Yes |
@@ -951,6 +1057,30 @@ All require: `Authorization`, `x-tenant-id`.
   "link": "https://example.com",
   "startDate": "2024-03-01T00:00:00.000Z",
   "endDate": "2024-04-01T00:00:00.000Z"
+}
+```
+
+### GET /api/social/banners/:id
+- **Response:** Banner details by ID.
+
+### PUT /api/social/banners/:id
+```json
+{
+  "title": "Ramadan Mubarak Updated",
+  "image": "https://example.com/new-banner.jpg",
+  "link": "https://example.com/ramadan-2026",
+  "status": "active",
+  "startDate": "2026-03-01T00:00:00.000Z",
+  "endDate": "2026-04-01T00:00:00.000Z"
+}
+```
+
+### DELETE /api/social/banners/:id
+- **Response:**
+```json
+{
+  "success": true,
+  "message": "Banner deleted successfully"
 }
 ```
 
@@ -1303,6 +1433,7 @@ Requires: `Authorization`.
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `POST` | `/api/upload/notification-image` | Upload notification image | Yes |
+| `POST` | `/api/upload/banner-image` | Upload banner image | Yes |
 
 ### POST /api/upload/notification-image
 - **Content-Type:** `multipart/form-data`
@@ -1311,10 +1442,129 @@ Requires: `Authorization`.
 ```json
 {
   "success": true,
-  "data": {
-    "url": "https://storage.example.com/notifications/image.jpg"
-  }
+  "url": "https://storage.example.com/uploads/notifications/image.jpg"
 }
+```
+
+### POST /api/upload/banner-image
+- **Content-Type:** `multipart/form-data`
+- **Body field:** `image` (file)
+- **Response:**
+```json
+{
+  "success": true,
+  "url": "https://storage.example.com/uploads/banners/image.jpg"
+}
+```
+
+---
+
+## Validation Rules (Key)
+
+Validation is enforced with `express-validator` + centralized validation handler.
+
+- **Auth validations:**
+  - `login.phone`: exactly 10 digits (`^[0-9]{10}$`)
+  - `send-otp.phone`, `verify-otp.phone`: 10 digits with optional `+91` / `91`
+  - `verify-otp.otp`: exactly 6 digits
+  - `change-password.newPassword`: minimum 6 chars
+- **Param validations:** most `:id` params require valid Mongo ObjectId.
+- **Role/tenant constraints:** enforced in middleware and controller-level checks.
+- **OTP controls:**
+  - Send OTP throttled to 1 request/minute per phone.
+  - OTP verify attempt limits (`429` on abuse via limiter + OTP attempts).
+
+---
+
+## Security Review & Recommended Improvements
+
+### Current Security Controls
+
+- JWT authentication with protected middleware.
+- Role-based authorization (`superAdminOnly`, `allowRoles`, `memberUserOnly`).
+- OTP rate limiting and OTP expiry/attempt tracking.
+- Inactive-account checks before issuing access.
+
+### Notable Risks / Improvements
+
+1. **Hardcoded fallback JWT secret** exists in auth login path if env is missing.
+   - Recommendation: fail fast in all auth handlers when `JWT_SECRET` is absent (no fallback secret).
+2. **App Store test backdoor behavior** in `send-otp` is deterministic.
+   - Recommendation: gate with explicit env flag (e.g., `ENABLE_APPSTORE_TEST_USER=true`) and disable in production.
+3. **In-memory OTP verify limiter** resets on process restart and does not scale horizontally.
+   - Recommendation: move limiter to Redis/distributed store for multi-instance deployments.
+4. **Sensitive logging risk** around OTP workflows.
+   - Recommendation: avoid logging full phone/OTP in production logs; mask values.
+5. **CORS currently open by default**.
+   - Recommendation: restrict origins in production.
+
+---
+
+## Sample cURL Requests
+
+### 1) Password Login
+```bash
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "9999999999",
+    "password": "admin123"
+  }'
+```
+
+### 2) OTP Send (Normal)
+```bash
+curl -X POST http://localhost:5000/api/auth/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "9999999999"
+  }'
+```
+
+### 3) OTP Send (App Store Test User Bootstrap)
+```bash
+curl -X POST http://localhost:5000/api/auth/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "8877665544"
+  }'
+```
+
+### 4) OTP Verify
+```bash
+curl -X POST http://localhost:5000/api/auth/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "8877665544",
+    "otp": "123456"
+  }'
+```
+
+### 5) Create User (Authenticated)
+```bash
+curl -X POST http://localhost:5000/api/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "x-tenant-id: YOUR_TENANT_ID" \
+  -d '{
+    "name": "Ahmed Ali",
+    "phone": "9876543210",
+    "role": "mahall",
+    "password": "123456",
+    "permissions": {
+      "view": true,
+      "add": true,
+      "edit": true,
+      "delete": false
+    }
+  }'
+```
+
+### 6) Salary Payments List (Authenticated)
+```bash
+curl -X GET "http://localhost:5000/api/salary-payments?month=2&year=2024" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "x-tenant-id: YOUR_TENANT_ID"
 ```
 
 ---
@@ -1340,14 +1590,14 @@ Requires: `Authorization`.
 | Assets | 9 |
 | Petty Cash | 7 |
 | Salary | 7 |
-| Social | 8 |
+| Social | 11 |
 | Reports | 3 |
 | Accounting Reports | 6 |
 | Notifications | 4 |
 | Master Accounts | 20 |
 | Member User | 17 |
-| Upload | 1 |
-| **Total** | **~177** |
+| Upload | 2 |
+| **Total** | **~181** |
 
 ---
 

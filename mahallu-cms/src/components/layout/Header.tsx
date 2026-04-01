@@ -3,12 +3,15 @@ import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
 import { applyTheme } from '@/utils/theme';
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TenantSwitcher from './TenantSwitcher';
 import CommandPalette from '@/components/ui/CommandPalette';
 import { tenantService } from '@/services/tenantService';
 import { Tenant } from '@/types/tenant';
+import { ROUTES } from '@/constants/routes';
 
 export default function Header() {
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useThemeStore();
   const { user, logout, isSuperAdmin, currentTenantId } = useAuthStore();
   const [mounted, setMounted] = useState(false);
@@ -83,6 +86,11 @@ export default function Header() {
   const handleLogout = () => {
     logout();
     window.location.href = '/login';
+  };
+
+  const handleNotificationsClick = () => {
+    setShowUserMenu(false);
+    navigate(ROUTES.NOTIFICATIONS.INDIVIDUAL);
   };
 
   const formatMemberSince = (date: string) => {
@@ -250,10 +258,8 @@ export default function Header() {
               <div className="border-t border-gray-200 dark:border-gray-700 p-2 space-y-1">
                 {/* Notifications */}
                 <button
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    // Handle notifications click
-                  }}
+                  onClick={handleNotificationsClick}
+                  aria-label="View notifications"
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group relative"
                 >
                   <div className="flex items-center gap-3">

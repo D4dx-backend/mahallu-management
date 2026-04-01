@@ -22,7 +22,20 @@ export const uploadNotificationImage = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'No image file provided' });
     }
 
-    const url = await uploadFileToSpaces(req.file);
+    const url = await uploadFileToSpaces(req.file, 'notifications');
+    res.json({ success: true, url });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const uploadBannerImage = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image file provided' });
+    }
+
+    const url = await uploadFileToSpaces(req.file, 'banners');
     res.json({ success: true, url });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
