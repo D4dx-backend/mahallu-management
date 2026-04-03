@@ -1393,6 +1393,7 @@ Member-facing portal endpoints. Require `Authorization: Bearer <token>` (member 
 | `GET` | `/api/member-user/notifications` | Get own notifications |
 | `GET` | `/api/member-user/programs` | Get community programs |
 | `GET` | `/api/member-user/feeds` | Get public feeds |
+| `GET` | `/api/member-user/banners` | Get active banners |
 | `GET` | `/api/member-user/family-members` | Get own family members |
 
 ### GET /api/member-user/overview
@@ -1452,6 +1453,42 @@ Member-facing portal endpoints. Require `Authorization: Bearer <token>` (member 
   "destination": "UAE"
 }
 ```
+
+### GET /api/member-user/banners
+- **Description:** Get active banners for the member's own mahallu. Used in the Flutter member app to display a banner/slider.
+- **Access:** Member user only (JWT token required). No `x-tenant-id` needed — tenant is resolved automatically from the logged-in member.
+- **Query params (optional):** `page`, `limit`
+- **Filters applied automatically:**
+  - `status: active` only
+  - `startDate <= today` (if set)
+  - `endDate >= today` (if set)
+- **Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "<bannerId>",
+      "tenantId": "<tenantId>",
+      "title": "Ramadan Mubarak",
+      "image": "https://cdn.example.com/uploads/banners/banner.jpg",
+      "link": "https://example.com/ramadan",
+      "status": "active",
+      "startDate": "2026-03-01T00:00:00.000Z",
+      "endDate": "2026-04-01T00:00:00.000Z",
+      "createdAt": "2026-02-28T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+- **Flutter usage:** Call this endpoint after login with the member token. Render each item's `image` URL in a banner carousel/slider. Use `link` for tap navigation and `title` as caption.
+- **Errors:** `404` member not found or not linked
 
 ---
 
@@ -1650,7 +1687,7 @@ curl -X GET "http://localhost:5000/api/salary-payments?month=2&year=2024" \
 | Accounting Reports | 6 |
 | Notifications | 4 |
 | Master Accounts | 20 |
-| Member User | 17 |
+| Member User | 18 |
 | Upload | 2 |
 | **Total** | **~181** |
 

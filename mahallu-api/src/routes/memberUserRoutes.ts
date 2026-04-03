@@ -16,6 +16,7 @@ import {
   getOwnNotifications,
   getCommunityPrograms,
   getPublicFeeds,
+  getPublicBanners,
   getOwnFamilyMembers,
 } from '../controllers/memberUserController';
 import { authMiddleware, memberUserOnly } from '../middleware/authMiddleware';
@@ -481,6 +482,37 @@ router.get('/programs', getCommunityPrograms);
  *       200:
  *         description: Feeds retrieved successfully
  */
+/**
+ * @swagger
+ * /member-user/banners:
+ *   get:
+ *     summary: Get active banners
+ *     tags: [Member User]
+ *     description: |
+ *       Get active banners for the member's mahallu community.
+ *       Only returns banners with status 'active' and within their valid date range.
+ *       **Access:** Member User only
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: Banners retrieved successfully
+ *       404:
+ *         description: Member profile not found or not linked
+ */
+router.get('/banners', getPublicBanners);
+
 router.get('/feeds', getPublicFeeds);
 
 /**
