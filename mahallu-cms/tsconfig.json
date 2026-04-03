@@ -20,6 +20,7 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": false,
     "noImplicitAny": false,
+    "ignoreDeprecations": "6.0",
 
     /* Path aliases */
     "baseUrl": ".",

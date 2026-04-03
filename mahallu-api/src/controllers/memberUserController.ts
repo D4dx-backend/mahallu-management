@@ -5,7 +5,7 @@ import { Varisangya, Zakat, Wallet, Transaction } from '../models/Collectible';
 import { NikahRegistration, DeathRegistration, NOC } from '../models/Registration';
 import Notification from '../models/Notification';
 import Institute from '../models/Institute';
-import { Feed } from '../models/Social';
+import { Banner, Feed } from '../models/Social';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { getPaginationParams, createPaginationResponse } from '../utils/pagination';
 import User from '../models/User';
@@ -846,6 +846,60 @@ export const getCommunityPrograms = async (req: AuthRequest, res: Response) => {
     ]);
 
     res.json(createPaginationResponse(programs, total, page, limit));
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get public banners
+export const getPublicBanners = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.memberId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member profile not linked to user account',
+      });
+    }
+
+    const member = await Member.findById(req.user.memberId);
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: 'Member not found',
+      });
+    }
+
+    const { page, limit, skip } = getPaginationParams(req);
+
+    const now = new Date();
+    const query: any = {
+      tenantId: member.tenantId,
+      status: 'active',
+      $or: [
+        { startDate: { $exists: false } },
+        { startDate: null },
+        { startDate: { $lte: now } },
+      ],
+      $and: [
+        {
+          $or: [
+            { endDate: { $exists: false } },
+            { endDate: null },
+            { endDate: { $gte: now } },
+          ],
+        },
+      ],
+    };
+
+    const [banners, total] = await Promise.all([
+      Banner.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Banner.countDocuments(query),
+    ]);
+
+    res.json(createPaginationResponse(banners, total, page, limit));
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

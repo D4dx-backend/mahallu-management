@@ -38,10 +38,10 @@ export const createBanner = async (req: AuthRequest, res: Response) => {
       tenantId: req.tenantId || req.body.tenantId,
     };
 
-    if (!bannerData.tenantId && !req.isSuperAdmin) {
+    if (!bannerData.tenantId) {
       return res.status(400).json({
         success: false,
-        message: 'Tenant ID is required',
+        message: 'Tenant ID is required. Super admins must pass x-tenant-id header or tenantId in the request body.',
       });
     }
 

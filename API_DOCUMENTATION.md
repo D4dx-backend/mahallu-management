@@ -1050,6 +1050,8 @@ All require: `Authorization`, `x-tenant-id`.
 | `PUT` | `/api/social/support/:id` | Update support ticket | Yes |
 
 ### POST /api/social/banners
+
+**Option A — URL-based image:**
 ```json
 {
   "title": "Ramadan Mubarak",
@@ -1060,14 +1062,41 @@ All require: `Authorization`, `x-tenant-id`.
 }
 ```
 
+**Option B — Local image upload (two-step):**
+
+**Step 1:** Upload the image file first:
+```
+POST /api/upload/banner-image
+Content-Type: multipart/form-data
+Body field: image (file)
+```
+Response:
+```json
+{ "success": true, "url": "https://cdn.example.com/uploads/banners/image.jpg" }
+```
+
+**Step 2:** Use the returned `url` as the `image` field:
+```json
+{
+  "title": "Ramadan Mubarak",
+  "image": "https://cdn.example.com/uploads/banners/image.jpg",
+  "link": "https://example.com",
+  "startDate": "2024-03-01T00:00:00.000Z",
+  "endDate": "2024-04-01T00:00:00.000Z"
+}
+```
+
 ### GET /api/social/banners/:id
 - **Response:** Banner details by ID.
 
 ### PUT /api/social/banners/:id
+
+All fields are optional. To update the image from a local file, upload it first (same two-step flow as POST), then pass the returned URL in `image`.
+
 ```json
 {
   "title": "Ramadan Mubarak Updated",
-  "image": "https://example.com/new-banner.jpg",
+  "image": "https://cdn.example.com/uploads/banners/new-banner.jpg",
   "link": "https://example.com/ramadan-2026",
   "status": "active",
   "startDate": "2026-03-01T00:00:00.000Z",
@@ -1364,6 +1393,7 @@ Member-facing portal endpoints. Require `Authorization: Bearer <token>` (member 
 | `GET` | `/api/member-user/notifications` | Get own notifications |
 | `GET` | `/api/member-user/programs` | Get community programs |
 | `GET` | `/api/member-user/feeds` | Get public feeds |
+| `GET` | `/api/member-user/banners` | Get active banners |
 | `GET` | `/api/member-user/family-members` | Get own family members |
 
 ### GET /api/member-user/overview
@@ -1424,6 +1454,42 @@ Member-facing portal endpoints. Require `Authorization: Bearer <token>` (member 
 }
 ```
 
+### GET /api/member-user/banners
+- **Description:** Get active banners for the member's own mahallu. Used in the Flutter member app to display a banner/slider.
+- **Access:** Member user only (JWT token required). No `x-tenant-id` needed — tenant is resolved automatically from the logged-in member.
+- **Query params (optional):** `page`, `limit`
+- **Filters applied automatically:**
+  - `status: active` only
+  - `startDate <= today` (if set)
+  - `endDate >= today` (if set)
+- **Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "_id": "<bannerId>",
+      "tenantId": "<tenantId>",
+      "title": "Ramadan Mubarak",
+      "image": "https://cdn.example.com/uploads/banners/banner.jpg",
+      "link": "https://example.com/ramadan",
+      "status": "active",
+      "startDate": "2026-03-01T00:00:00.000Z",
+      "endDate": "2026-04-01T00:00:00.000Z",
+      "createdAt": "2026-02-28T10:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+- **Flutter usage:** Call this endpoint after login with the member token. Render each item's `image` URL in a banner carousel/slider. Use `link` for tap navigation and `title` as caption.
+- **Errors:** `404` member not found or not linked
+
 ---
 
 ## 24. Upload
@@ -1456,6 +1522,32 @@ Requires: `Authorization`.
   "url": "https://storage.example.com/uploads/banners/image.jpg"
 }
 ```
+
+### Upload Configuration (DigitalOcean Spaces)
+
+Both upload endpoints (`/api/upload/notification-image` and `/api/upload/banner-image`) use the same object storage client configuration.
+
+Required server environment variables:
+- `DO_SPACES_ENDPOINT` (example: `sgp1.digitaloceanspaces.com`)
+- `DO_SPACES_KEY`
+- `DO_SPACES_SECRET`
+- `DO_SPACES_BUCKET`
+
+Optional:
+- `DO_SPACES_FOLDER` (default: `uploads`)
+- `DO_SPACES_CDN_ENDPOINT`
+
+### Common Upload Errors
+
+- **`500 Failed to upload image to object storage`**:
+  - Usually means invalid/missing Spaces credentials or bucket/endpoint mismatch.
+  - If both upload endpoints fail with the same 500, this is a backend storage configuration issue (not client request formatting).
+
+- **`500 Missing object storage env vars: ...`**:
+  - Required `DO_SPACES_*` variables are not set in the backend runtime environment.
+
+- **`400 No image file provided`**:
+  - Multipart request did not include the `image` file field.
 
 ---
 
@@ -1595,7 +1687,7 @@ curl -X GET "http://localhost:5000/api/salary-payments?month=2&year=2024" \
 | Accounting Reports | 6 |
 | Notifications | 4 |
 | Master Accounts | 20 |
-| Member User | 17 |
+| Member User | 18 |
 | Upload | 2 |
 | **Total** | **~181** |
 
